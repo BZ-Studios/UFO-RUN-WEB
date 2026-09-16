@@ -23,6 +23,10 @@
   let SPIKE_HEIGHT = 400;
   const INITIAL_SPIKE_FREQUENCY = 90;
   const INITIAL_SPIKE_SPEED = 3;
+  const MOBILE_SPIKE_INTERVAL_MULTIPLIER = 1.65;
+  const mobileLayoutQuery = window.matchMedia(
+    "(pointer: coarse), (max-width: 700px), (orientation: landscape) and (max-height: 550px)",
+  );
 
   const POWERUP_SIZE = 50;
   const POWERUP_SPEED = 4;
@@ -233,9 +237,9 @@
     soundButton.setAttribute("aria-label", profile.soundEnabled ? "Silenciar sonido" : "Activar sonido");
     document.getElementById("fullscreen-button").hidden = !document.documentElement.requestFullscreen;
     document.getElementById("final-score").textContent = String(score);
-    document.getElementById("run-reward").textContent = `+${lastReward} créditos guardados`;
+    document.getElementById("run-reward").textContent = `+${lastReward} monedas guardadas`;
     document.getElementById("shop-status").textContent = shopMessage && performance.now() < shopMessageUntil
-      ? shopMessage : "Gana créditos superando obstáculos";
+      ? shopMessage : "Gana monedas superando obstáculos";
     for (const skin of SKINS) {
       const elements = skinCards.get(skin.id);
       const owned = profile.ownedSkins.includes(skin.id);
@@ -243,10 +247,10 @@
       elements.card.classList.toggle("owned", owned);
       elements.card.classList.toggle("equipped", equipped);
       elements.ownership.textContent = owned ? "En tu colección" : "Desbloquear";
-      elements.button.textContent = equipped ? "Equipada" : owned ? "Equipar" : `${skin.cost} créditos`;
+      elements.button.textContent = equipped ? "Equipada" : owned ? "Equipar" : `${skin.cost} monedas`;
       elements.button.disabled = equipped;
       elements.button.setAttribute("aria-label", equipped ? `${skin.name} equipada` : owned
-        ? `Equipar ${skin.name}` : `Comprar ${skin.name} por ${skin.cost} créditos`);
+        ? `Equipar ${skin.name}` : `Comprar ${skin.name} por ${skin.cost} monedas`);
     }
   }
 
@@ -432,7 +436,7 @@
       profile.selectedSkin = skin.id;
       shopMessage = `${skin.name} DESBLOQUEADA`;
     } else {
-      shopMessage = `FALTAN ${skin.cost - profile.credits} CREDITOS`;
+      shopMessage = `FALTAN ${skin.cost - profile.credits} MONEDAS`;
     }
 
     shopMessageUntil = performance.now() + 1800;
@@ -525,7 +529,10 @@
     }
 
     spikeCounter += 1;
-    if (spikeCounter > spikeFrequency) {
+    // Más tiempo entre parejas en móvil: mayor separación sin cambiar su velocidad.
+    const spawnInterval = mobileLayoutQuery.matches
+      ? Math.ceil(spikeFrequency * MOBILE_SPIKE_INTERVAL_MULTIPLIER) : spikeFrequency;
+    if (spikeCounter > spawnInterval) {
       spikes.push(createSpikes(WIDTH));
       spikeCounter = 0;
     }

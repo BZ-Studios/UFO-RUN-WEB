@@ -26,7 +26,7 @@
         <header class="toolbar">
           <button id="back-button" class="control back-button" type="button" hidden>Volver</button>
           <div class="toolbar-actions">
-            <span class="wallet" aria-label="Créditos disponibles"><span aria-hidden="true">✦</span> <span data-credits>0</span></span>
+            <span class="wallet" aria-label="Monedas disponibles"><span aria-hidden="true">✦</span> <span data-credits>0</span></span>
             <button id="sound-button" class="control icon-control" type="button" aria-label="Silenciar sonido" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h4l5-4v14l-5-4H3z"/><path class="sound-waves" d="M16 8q5 4 0 8M19 5q8 7 0 14"/></svg></button>
             <button id="fullscreen-button" class="control icon-control" type="button" aria-label="Pantalla completa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M3 15v6h6M21 15v6h-6"/></svg></button>
           </div>
@@ -36,14 +36,14 @@
           <figure class="ship-preview"><img id="equipped-preview" src="src/ufo_principal.png" alt="Nave equipada"><figcaption id="equipped-name">Clásica</figcaption></figure>
           <div class="menu-actions"><button id="play-button" class="action primary" type="button"><span aria-hidden="true">▶</span> Jugar</button><button id="shop-button" class="action secondary" type="button">Tienda de naves</button></div>
           <div class="menu-info"><p class="instructions"><strong class="instructions-mobile">Toca para volar</strong><span class="instructions-mobile">Toca la pantalla para impulsarte</span><strong class="instructions-desktop">Espacio o clic</strong><span class="instructions-desktop">Para impulsarte</span></p><p class="record">Mejor puntaje<strong data-best-score>0</strong></p></div>
-          <p class="menu-footnote">Cada punto ganado se guarda como crédito</p>
+          <p class="menu-footnote">Cada punto ganado se convierte en una moneda</p>
         </div>
         <div id="shop-screen" class="screen shop-screen" hidden>
           <div class="section-heading"><h2>Hangar</h2><p>Elige tu nave</p></div>
-          <div id="shop-grid" class="shop-grid"></div><p id="shop-status" class="shop-status" role="status">Gana créditos superando obstáculos</p>
+          <div id="shop-grid" class="shop-grid"></div><p id="shop-status" class="shop-status" role="status">Gana monedas superando obstáculos</p>
         </div>
         <div id="gameover-screen" class="screen gameover-screen" hidden>
-          <h2>Misión terminada</h2><p class="final-score">Puntaje <strong id="final-score">0</strong></p><p id="run-reward" class="run-reward">+0 créditos guardados</p>
+          <h2>Misión terminada</h2><p class="final-score">Puntaje <strong id="final-score">0</strong></p><p id="run-reward" class="run-reward">+0 monedas guardadas</p>
           <div class="gameover-actions"><button id="restart-button" class="action primary" type="button">Reiniciar</button><button id="menu-button" class="action secondary" type="button">Menú principal</button></div>
           <p class="final-record">Mejor puntaje <strong data-best-score>0</strong></p><p class="authors">Créditos<span>Luis Zabala / Agustín Bustamante</span></p>
         </div>
