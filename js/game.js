@@ -4,22 +4,14 @@
   const canvas = document.getElementById("game");
   const context = canvas.getContext("2d");
 
-  const WIDTH = 800;
-  const HEIGHT = 600;
+  let WIDTH = 800;
+  let HEIGHT = 600;
   const FPS = 80;
   const FIXED_STEP_MS = 1000 / FPS;
 
   const BLUE = "rgb(50, 120, 240)";
-  const RED = "rgb(100, 5, 5)";
-  const GREEN = "rgb(5, 100, 5)";
-  const CYAN = "rgb(80, 220, 255)";
-  const PURPLE = "rgb(112, 62, 190)";
-  const YELLOW = "rgb(255, 214, 72)";
-  const WHITE = "rgb(238, 247, 255)";
-  const PANEL = "rgba(5, 10, 28, 0.88)";
-  const PANEL_SOFT = "rgba(8, 17, 42, 0.78)";
 
-  const UFO_X = 150;
+  let UFO_X = 150;
   const UFO_WIDTH = 55;
   const UFO_HEIGHT = 38;
   const UFO_HITBOX_WIDTH = UFO_WIDTH - 5;
@@ -28,8 +20,7 @@
   const JUMP_IMPULSE = -6;
 
   const SPIKE_WIDTH = 80;
-  const SPIKE_HEIGHT = 400;
-  const INITIAL_SPIKE_X = WIDTH;
+  let SPIKE_HEIGHT = 400;
   const INITIAL_SPIKE_FREQUENCY = 90;
   const INITIAL_SPIKE_SPEED = 3;
 
@@ -40,15 +31,6 @@
   const PLANET_SIZE = 80;
   const PLANET_OBSTACLE_INTERVAL = 10;
 
-  const MENU_PLAY_BUTTON = { x: 70, y: 260, width: 360, height: 68 };
-  const MENU_SHOP_BUTTON = { x: 70, y: 342, width: 360, height: 58 };
-  const SOUND_BUTTON = { x: 682, y: 24, width: 50, height: 42 };
-  const FULLSCREEN_BUTTON = { x: 740, y: 24, width: 50, height: 42 };
-  const SHOP_BACK_BUTTON = { x: 24, y: 24, width: 126, height: 42 };
-  const SHOP_CARD_WIDTH = 320;
-  const SHOP_CARD_HEIGHT = 166;
-  const GAMEOVER_RESTART_BUTTON = { x: 240, y: 270, width: 320, height: 58 };
-  const GAMEOVER_MENU_BUTTON = { x: 240, y: 342, width: 320, height: 52 };
 
   const PROFILE_STORAGE_KEY = "ufoRunProfileV1";
   const SKINS = [
@@ -57,13 +39,6 @@
     { id: "solar", name: "SOLAR", imageName: "ufoYellow", cost: 24, accent: "rgb(255, 205, 62)" },
     { id: "pulsar", name: "PULSAR AZUL", imageName: "ufoBlue", cost: 36, accent: "rgb(68, 154, 255)" },
   ];
-  const SHOP_CARDS = SKINS.map((skin, index) => ({
-    skin,
-    x: index % 2 === 0 ? 62 : 418,
-    y: index < 2 ? 126 : 326,
-    width: SHOP_CARD_WIDTH,
-    height: SHOP_CARD_HEIGHT,
-  }));
 
   const backgroundSources = ["src/fondo.jpg", "src/Fondo-2.png", "src/Fondo-3.png"];
 
@@ -127,7 +102,6 @@
   let accumulator = 0;
   let backgroundIndex = 0;
   let gamesStarted = 0;
-  let pointerPosition = { x: -1, y: -1 };
   let shopMessage = "";
   let shopMessageUntil = 0;
   let lastReward = 0;
@@ -201,6 +175,109 @@
   let planetX = WIDTH;
   let planetY = HEIGHT / 2;
   let currentPlanet = null;
+
+  const interfaceElement = document.getElementById("interface");
+  const gameHud = document.getElementById("game-hud");
+  const screenElements = {
+    menu: document.getElementById("menu-screen"),
+    shop: document.getElementById("shop-screen"),
+    gameover: document.getElementById("gameover-screen"),
+  };
+  const skinCards = new Map();
+  let interfaceState = "loading";
+
+  function buildShopInterface() {
+    const grid = document.getElementById("shop-grid");
+    for (const skin of SKINS) {
+      const card = document.createElement("article");
+      card.className = "skin-card";
+      card.style.setProperty("--skin-accent", skin.accent);
+      const heading = document.createElement("h3");
+      heading.textContent = skin.name;
+      const preview = document.createElement("img");
+      preview.src = imageSources[skin.imageName];
+      preview.alt = `Nave ${skin.name}`;
+      const ownership = document.createElement("p");
+      const button = document.createElement("button");
+      button.type = "button";
+      button.addEventListener("click", () => handleSkinAction(skin));
+      card.append(heading, preview, ownership, button);
+      grid.append(card);
+      skinCards.set(skin.id, { card, ownership, button });
+    }
+  }
+
+  function syncInterface() {
+    gameHud.hidden = state !== "playing";
+    interfaceElement.hidden = !screenElements[state];
+    for (const [name, screen] of Object.entries(screenElements)) {
+      screen.hidden = name !== state;
+    }
+    if (interfaceState !== state) {
+      interfaceElement.scrollTop = 0;
+      interfaceState = state;
+    }
+    document.querySelectorAll("[data-credits]").forEach((element) => {
+      element.textContent = String(profile.credits);
+    });
+    document.querySelectorAll("[data-best-score]").forEach((element) => {
+      element.textContent = String(profile.bestScore);
+    });
+    const skin = selectedSkin();
+    document.getElementById("equipped-preview").src = imageSources[skin.imageName];
+    document.getElementById("equipped-name").textContent = skin.name;
+    document.getElementById("equipped-name").style.color = skin.accent;
+    document.getElementById("back-button").hidden = state !== "shop";
+    const soundButton = document.getElementById("sound-button");
+    soundButton.setAttribute("aria-pressed", String(!profile.soundEnabled));
+    soundButton.setAttribute("aria-label", profile.soundEnabled ? "Silenciar sonido" : "Activar sonido");
+    document.getElementById("fullscreen-button").hidden = !document.documentElement.requestFullscreen;
+    document.getElementById("final-score").textContent = String(score);
+    document.getElementById("run-reward").textContent = `+${lastReward} créditos guardados`;
+    document.getElementById("shop-status").textContent = shopMessage && performance.now() < shopMessageUntil
+      ? shopMessage : "Gana créditos superando obstáculos";
+    for (const skin of SKINS) {
+      const elements = skinCards.get(skin.id);
+      const owned = profile.ownedSkins.includes(skin.id);
+      const equipped = profile.selectedSkin === skin.id;
+      elements.card.classList.toggle("owned", owned);
+      elements.card.classList.toggle("equipped", equipped);
+      elements.ownership.textContent = owned ? "En tu colección" : "Desbloquear";
+      elements.button.textContent = equipped ? "Equipada" : owned ? "Equipar" : `${skin.cost} CR`;
+      elements.button.disabled = equipped;
+      elements.button.setAttribute("aria-label", equipped ? `${skin.name} equipada` : owned
+        ? `Equipar ${skin.name}` : `Comprar ${skin.name} por ${skin.cost} créditos`);
+    }
+  }
+
+  function resizeGame() {
+    const bounds = canvas.getBoundingClientRect();
+    if (!bounds.width || !bounds.height) return;
+    const oldWidth = WIDTH;
+    const oldHeight = HEIGHT;
+    const oldSpikeHeight = SPIKE_HEIGHT;
+    const aspect = bounds.width / bounds.height;
+    WIDTH = aspect < 1 ? 450 : 600 * aspect;
+    HEIGHT = aspect < 1 ? 450 / aspect : 600;
+    UFO_X = WIDTH * 0.1875;
+    SPIKE_HEIGHT = Math.max(400, HEIGHT);
+    const centerShift = (HEIGHT - oldHeight) / 2;
+    ufoY = Math.max(1, Math.min(HEIGHT - UFO_HEIGHT, ufoY * HEIGHT / oldHeight));
+    for (const spike of spikes) {
+      spike.topX *= WIDTH / oldWidth;
+      spike.bottomX *= WIDTH / oldWidth;
+      spike.topY += centerShift - (SPIKE_HEIGHT - oldSpikeHeight);
+      spike.bottomY += centerShift;
+    }
+    powerupX *= WIDTH / oldWidth;
+    planetX *= WIDTH / oldWidth;
+    powerupY += centerShift;
+    planetY += centerShift;
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(bounds.width * pixelRatio);
+    canvas.height = Math.round(bounds.height * pixelRatio);
+    context.setTransform(canvas.width / WIDTH, 0, 0, canvas.height / HEIGHT, 0, 0);
+  }
 
   function loadImage(source) {
     return new Promise((resolve, reject) => {
@@ -297,6 +374,7 @@
     shopMessage = "";
     accumulator = 0;
     state = "playing";
+    syncInterface();
 
     stopAudio(invincibilitySound, true);
     playAudio(backgroundMusic, true);
@@ -305,6 +383,7 @@
 
   function showMainMenu() {
     state = "menu";
+    syncInterface();
     accumulator = 0;
     stopAudio(backgroundMusic, true);
     stopAudio(invincibilitySound, true);
@@ -314,6 +393,7 @@
     state = "shop";
     accumulator = 0;
     shopMessage = "";
+    syncInterface();
     stopAudio(backgroundMusic, true);
     stopAudio(invincibilitySound, true);
   }
@@ -321,6 +401,7 @@
   function toggleSound() {
     profile.soundEnabled = !profile.soundEnabled;
     saveProfile();
+    syncInterface();
     if (!profile.soundEnabled) {
       stopAudio(backgroundMusic);
       stopAudio(invincibilitySound);
@@ -331,9 +412,9 @@
 
   function toggleFullscreen() {
     if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
+      document.exitFullscreen?.().catch(() => {});
     } else {
-      document.documentElement.requestFullscreen().catch(() => {});
+      document.documentElement.requestFullscreen?.().catch(() => {});
     }
   }
 
@@ -356,6 +437,8 @@
 
     shopMessageUntil = performance.now() + 1800;
     saveProfile();
+    syncInterface();
+    window.setTimeout(syncInterface, 1850);
   }
 
   function jump() {
@@ -365,12 +448,12 @@
   }
 
   function createSpikes(x) {
-    const gapOffset = Math.floor(Math.random() * 151);
+    const gapCenter = HEIGHT / 2 + 75 - Math.floor(Math.random() * 151);
     return {
       topX: x,
-      topY: -190 - gapOffset,
+      topY: gapCenter - 90 - SPIKE_HEIGHT,
       bottomX: x,
-      bottomY: HEIGHT - SPIKE_HEIGHT + 190 - gapOffset,
+      bottomY: gapCenter + 90,
       counted: false,
     };
   }
@@ -423,6 +506,7 @@
     profile.bestScore = Math.max(profile.bestScore, score);
     saveProfile();
     state = "gameover";
+    syncInterface();
     accumulator = 0;
   }
 
@@ -442,14 +526,14 @@
 
     spikeCounter += 1;
     if (spikeCounter > spikeFrequency) {
-      spikes.push(createSpikes(INITIAL_SPIKE_X));
+      spikes.push(createSpikes(WIDTH));
       spikeCounter = 0;
     }
 
     const remainingSpikes = [];
     for (const spike of spikes) {
-      spike.topX -= spikeSpeed;
-      spike.bottomX -= spikeSpeed;
+      spike.topX -= spikeSpeed * WIDTH / 800;
+      spike.bottomX -= spikeSpeed * WIDTH / 800;
 
       if (spike.topX + SPIKE_WIDTH > 0) {
         remainingSpikes.push(spike);
@@ -498,7 +582,7 @@
     };
 
     if (powerupActive) {
-      powerupX -= POWERUP_SPEED;
+      powerupX -= POWERUP_SPEED * WIDTH / 800;
       const powerupRect = {
         x: Math.trunc(powerupX),
         y: Math.trunc(powerupY),
@@ -524,7 +608,7 @@
     }
 
     if (planetActive) {
-      planetX -= spikeSpeed;
+      planetX -= spikeSpeed * WIDTH / 800;
       const planetRect = {
         x: Math.trunc(planetX),
         y: Math.trunc(planetY),
@@ -570,187 +654,8 @@
     context.clearRect(0, 0, WIDTH, HEIGHT);
   }
 
-  function roundedRectanglePath(x, y, width, height, radius) {
-    const safeRadius = Math.min(radius, width / 2, height / 2);
-    context.beginPath();
-    context.moveTo(x + safeRadius, y);
-    context.lineTo(x + width - safeRadius, y);
-    context.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
-    context.lineTo(x + width, y + height - safeRadius);
-    context.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
-    context.lineTo(x + safeRadius, y + height);
-    context.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
-    context.lineTo(x, y + safeRadius);
-    context.quadraticCurveTo(x, y, x + safeRadius, y);
-    context.closePath();
-  }
 
-  function drawDimOverlay(opacity = 0.55) {
-    context.fillStyle = `rgba(0, 3, 14, ${opacity})`;
-    context.fillRect(0, 0, WIDTH, HEIGHT);
-  }
 
-  function drawPanel(rectangle, fill = PANEL, border = "rgba(94, 145, 255, 0.55)", radius = 12) {
-    context.save();
-    context.shadowColor = "rgba(25, 90, 255, 0.3)";
-    context.shadowBlur = 18;
-    roundedRectanglePath(rectangle.x, rectangle.y, rectangle.width, rectangle.height, radius);
-    context.fillStyle = fill;
-    context.fill();
-    context.shadowBlur = 0;
-    context.strokeStyle = border;
-    context.lineWidth = 2;
-    context.stroke();
-    context.restore();
-  }
-
-  function drawText(text, size, color, x, y) {
-    context.fillStyle = color;
-    context.font = `${size}px "UFO Run"`;
-    context.textAlign = "left";
-    context.textBaseline = "top";
-    context.fillText(text, x, y);
-  }
-
-  function drawCenteredText(text, size, color, y) {
-    context.font = `${size}px "UFO Run"`;
-    context.textAlign = "center";
-    context.textBaseline = "top";
-    context.fillStyle = color;
-    context.fillText(text, WIDTH / 2, y);
-  }
-
-  function drawCenteredTextIn(text, size, color, rectangle, verticalOffset = 0) {
-    context.font = `${size}px "UFO Run"`;
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillStyle = color;
-    context.fillText(text, rectangle.x + rectangle.width / 2, rectangle.y + rectangle.height / 2 + verticalOffset);
-  }
-
-  function drawCreditIcon(x, y, size = 20) {
-    context.save();
-    context.fillStyle = YELLOW;
-    context.shadowColor = "rgba(255, 214, 72, 0.75)";
-    context.shadowBlur = 8;
-    context.beginPath();
-    for (let index = 0; index < 8; index += 1) {
-      const angle = -Math.PI / 2 + (index * Math.PI) / 4;
-      const radius = index % 2 === 0 ? size / 2 : size / 4;
-      const px = x + Math.cos(angle) * radius;
-      const py = y + Math.sin(angle) * radius;
-      if (index === 0) {
-        context.moveTo(px, py);
-      } else {
-        context.lineTo(px, py);
-      }
-    }
-    context.closePath();
-    context.fill();
-    context.restore();
-  }
-
-  function drawCreditBadge() {
-    const badge = { x: 536, y: 24, width: 138, height: 42 };
-    drawPanel(badge, "rgba(7, 14, 34, 0.94)", "rgba(255, 214, 72, 0.7)", 18);
-    drawCreditIcon(badge.x + 25, badge.y + 21, 22);
-    drawCenteredTextIn(String(profile.credits), 24, WHITE, {
-      x: badge.x + 42,
-      y: badge.y,
-      width: badge.width - 48,
-      height: badge.height,
-    });
-  }
-
-  function isHovered(button) {
-    return pointInside(pointerPosition, button);
-  }
-
-  function drawActionButton(button, label, accent, options = {}) {
-    const hovered = isHovered(button);
-    const fill = options.primary
-      ? hovered ? "rgba(19, 151, 92, 0.98)" : "rgba(7, 112, 68, 0.96)"
-      : hovered ? "rgba(38, 34, 84, 0.98)" : PANEL_SOFT;
-    drawPanel(button, fill, hovered ? accent : "rgba(91, 119, 207, 0.62)", options.primary ? 14 : 10);
-    if (options.icon === "play") {
-      context.fillStyle = WHITE;
-      context.beginPath();
-      context.moveTo(button.x + 28, button.y + button.height / 2 - 11);
-      context.lineTo(button.x + 28, button.y + button.height / 2 + 11);
-      context.lineTo(button.x + 47, button.y + button.height / 2);
-      context.closePath();
-      context.fill();
-    } else if (options.icon === "shop") {
-      context.strokeStyle = accent;
-      context.lineWidth = 3;
-      context.strokeRect(button.x + 24, button.y + 23, 24, 20);
-      context.beginPath();
-      context.moveTo(button.x + 28, button.y + 23);
-      context.quadraticCurveTo(button.x + 36, button.y + 10, button.x + 44, button.y + 23);
-      context.stroke();
-    }
-    const textRectangle = options.icon
-      ? { x: button.x + 62, y: button.y, width: button.width - 84, height: button.height }
-      : button;
-    drawCenteredTextIn(label, options.fontSize || 27, options.primary ? WHITE : accent, textRectangle);
-  }
-
-  function drawTopControls() {
-    drawCreditBadge();
-    drawPanel(SOUND_BUTTON, "rgba(7, 14, 34, 0.94)", isHovered(SOUND_BUTTON) ? CYAN : "rgba(91, 119, 207, 0.62)", 10);
-    const soundColor = profile.soundEnabled ? CYAN : "rgb(150, 165, 190)";
-    context.fillStyle = soundColor;
-    context.fillRect(SOUND_BUTTON.x + 11, SOUND_BUTTON.y + 17, 8, 10);
-    context.beginPath();
-    context.moveTo(SOUND_BUTTON.x + 19, SOUND_BUTTON.y + 17);
-    context.lineTo(SOUND_BUTTON.x + 28, SOUND_BUTTON.y + 11);
-    context.lineTo(SOUND_BUTTON.x + 28, SOUND_BUTTON.y + 33);
-    context.lineTo(SOUND_BUTTON.x + 19, SOUND_BUTTON.y + 27);
-    context.closePath();
-    context.fill();
-    context.strokeStyle = soundColor;
-    context.lineWidth = 2;
-    context.beginPath();
-    if (profile.soundEnabled) {
-      context.arc(SOUND_BUTTON.x + 27, SOUND_BUTTON.y + 22, 8, -0.75, 0.75);
-      context.arc(SOUND_BUTTON.x + 27, SOUND_BUTTON.y + 22, 13, -0.62, 0.62);
-    } else {
-      context.moveTo(SOUND_BUTTON.x + 34, SOUND_BUTTON.y + 14);
-      context.lineTo(SOUND_BUTTON.x + 43, SOUND_BUTTON.y + 30);
-      context.moveTo(SOUND_BUTTON.x + 43, SOUND_BUTTON.y + 14);
-      context.lineTo(SOUND_BUTTON.x + 34, SOUND_BUTTON.y + 30);
-    }
-    context.stroke();
-    drawPanel(FULLSCREEN_BUTTON, "rgba(7, 14, 34, 0.94)", isHovered(FULLSCREEN_BUTTON) ? CYAN : "rgba(91, 119, 207, 0.62)", 10);
-    context.strokeStyle = CYAN;
-    context.lineWidth = 2;
-    const fx = FULLSCREEN_BUTTON.x + 14;
-    const fy = FULLSCREEN_BUTTON.y + 11;
-    context.beginPath();
-    context.moveTo(fx + 8, fy);
-    context.lineTo(fx, fy);
-    context.lineTo(fx, fy + 8);
-    context.moveTo(fx + 14, fy);
-    context.lineTo(fx + 22, fy);
-    context.lineTo(fx + 22, fy + 8);
-    context.moveTo(fx, fy + 12);
-    context.lineTo(fx, fy + 20);
-    context.lineTo(fx + 8, fy + 20);
-    context.moveTo(fx + 22, fy + 12);
-    context.lineTo(fx + 22, fy + 20);
-    context.lineTo(fx + 14, fy + 20);
-    context.stroke();
-  }
-
-  function drawButton(button, color, label, labelX) {
-    drawPanel(button, color, "rgba(87, 150, 255, 0.75)", 10);
-    drawText(label, 30, WHITE, labelX, button.y + 10);
-  }
-
-  function drawCenteredButton(button, color, label) {
-    drawPanel(button, color, "rgba(87, 150, 255, 0.75)", 10);
-    drawCenteredTextIn(label, 30, WHITE, button);
-  }
 
   function rotatedBounds(width, height, degrees) {
     const radians = Math.abs((degrees * Math.PI) / 180);
@@ -818,86 +723,6 @@
     );
   }
 
-  function drawUfoPreview(image, x, y, width = 126, height = 87) {
-    context.save();
-    context.imageSmoothingEnabled = false;
-    context.shadowColor = "rgba(80, 220, 255, 0.8)";
-    context.shadowBlur = 20;
-    context.drawImage(image, Math.trunc(x), Math.trunc(y), width, height);
-    context.restore();
-  }
-
-  function renderMenu() {
-    drawBackground();
-    drawDimOverlay(0.58);
-    drawTopControls();
-
-    drawText("UFO", 70, WHITE, 70, 78);
-    drawText("RUN", 70, CYAN, 70, 141);
-    drawText("VUELA  ESQUIVA  EXPLORA", 15, "rgb(161, 184, 228)", 73, 218);
-
-    drawActionButton(MENU_PLAY_BUTTON, "JUGAR", CYAN, { primary: true, icon: "play", fontSize: 32 });
-    drawActionButton(MENU_SHOP_BUTTON, "TIENDA DE NAVES", PURPLE, { icon: "shop", fontSize: 23 });
-
-    const activeSkin = selectedSkin();
-    const bob = Math.sin(performance.now() / 480) * 8;
-    drawUfoPreview(images[activeSkin.imageName], 560, 165 + bob, 150, 104);
-    drawCenteredTextIn(activeSkin.name, 16, activeSkin.accent, { x: 530, y: 284, width: 210, height: 32 });
-
-    drawPanel({ x: 70, y: 425, width: 360, height: 84 }, "rgba(7, 14, 34, 0.7)", "rgba(91, 119, 207, 0.42)", 10);
-    drawText("ESPACIO / CLIC", 18, WHITE, 92, 443);
-    drawText("para impulsarte", 16, "rgb(158, 178, 215)", 92, 474);
-
-    drawText("MEJOR PUNTAJE", 15, "rgb(150, 173, 214)", 590, 445);
-    drawText(String(profile.bestScore), 43, CYAN, 590, 468);
-    drawText("Cada punto ganado se guarda como credito", 13, "rgb(130, 151, 192)", 70, 548);
-  }
-
-  function shopActionButton(card) {
-    return {
-      x: card.x + 157,
-      y: card.y + 104,
-      width: 143,
-      height: 42,
-    };
-  }
-
-  function renderShop() {
-    drawBackground();
-    drawDimOverlay(0.72);
-    drawTopControls();
-
-    drawActionButton(SHOP_BACK_BUTTON, "VOLVER", CYAN, { fontSize: 18 });
-    drawCenteredText("HANGAR", 43, WHITE, 24);
-    drawCenteredText("ELIGE TU NAVE", 15, CYAN, 77);
-
-    for (const card of SHOP_CARDS) {
-      const owned = profile.ownedSkins.includes(card.skin.id);
-      const equipped = profile.selectedSkin === card.skin.id;
-      const border = equipped ? card.skin.accent : "rgba(91, 119, 207, 0.58)";
-      drawPanel(card, equipped ? "rgba(16, 28, 57, 0.96)" : PANEL, border, 12);
-
-      drawText(card.skin.name, 20, equipped ? card.skin.accent : WHITE, card.x + 18, card.y + 16);
-      drawUfoPreview(images[card.skin.imageName], card.x + 28, card.y + 57, 102, 70);
-
-      const actionButton = shopActionButton(card);
-      if (equipped) {
-        drawActionButton(actionButton, "EQUIPADA", card.skin.accent, { fontSize: 15 });
-      } else if (owned) {
-        drawActionButton(actionButton, "EQUIPAR", card.skin.accent, { fontSize: 16 });
-      } else {
-        drawActionButton(actionButton, `${card.skin.cost} CR`, YELLOW, { fontSize: 18 });
-      }
-
-      drawText(owned ? "EN TU COLECCION" : "DESBLOQUEAR", 12, "rgb(143, 166, 210)", card.x + 162, card.y + 73);
-    }
-
-    if (shopMessage && performance.now() < shopMessageUntil) {
-      drawCenteredText(shopMessage, 17, YELLOW, 523);
-    } else {
-      drawCenteredText("GANA CREDITOS SUPERANDO OBSTACULOS", 13, "rgb(147, 169, 210)", 525);
-    }
-  }
 
   function renderPlaying() {
     drawBackground();
@@ -920,41 +745,21 @@
 
     drawPlanet();
 
-    drawText(`Puntaje: ${score}`, 30, BLUE, 10, 10);
+    const scoreLabel = `Puntaje: ${score}`;
+    if (gameHud.textContent !== scoreLabel) gameHud.textContent = scoreLabel;
   }
 
-  function renderGameOver() {
-    drawBackground();
-
-    drawRotatedAtTopLeft(images.ufoDead, UFO_X, Math.trunc(ufoY), 10);
-    context.imageSmoothingEnabled = false;
-    context.drawImage(images.powerup, powerupX, powerupY, POWERUP_SIZE, POWERUP_SIZE);
-    drawPlanet();
-    drawSpikes();
-    drawDimOverlay(0.7);
-    drawCreditBadge();
-
-    drawCenteredText("MISION TERMINADA", 48, WHITE, 70);
-    drawCenteredText(`PUNTAJE ${score}`, 30, CYAN, 148);
-    drawCenteredText(`+${lastReward} CREDITOS GUARDADOS`, 16, YELLOW, 202);
-
-    drawActionButton(GAMEOVER_RESTART_BUTTON, "REINICIAR", CYAN, { primary: true, fontSize: 25 });
-    drawActionButton(GAMEOVER_MENU_BUTTON, "MENU PRINCIPAL", PURPLE, { fontSize: 20 });
-
-    drawCenteredText(`MEJOR PUNTAJE  ${profile.bestScore}`, 16, "rgb(161, 184, 228)", 430);
-    drawCenteredText("CREDITOS", 13, "rgb(112, 140, 192)", 510);
-    drawCenteredText("LUIS ZABALA  /  AGUSTIN BUSTAMANTE", 13, "rgb(151, 174, 214)", 535);
-  }
 
   function render() {
-    if (state === "menu") {
-      renderMenu();
-    } else if (state === "shop") {
-      renderShop();
-    } else if (state === "playing") {
+    if (state === "playing") {
       renderPlaying();
-    } else if (state === "gameover") {
-      renderGameOver();
+    } else {
+      drawBackground();
+      if (state === "gameover") {
+        drawSpikes();
+        drawPlanet();
+        drawRotatedAtTopLeft(images.ufoDead, UFO_X, Math.trunc(ufoY), 10);
+      }
     }
   }
 
@@ -976,93 +781,17 @@
     animationFrameId = requestAnimationFrame(frame);
   }
 
-  function canvasPoint(event) {
-    const bounds = canvas.getBoundingClientRect();
-    return {
-      x: ((event.clientX - bounds.left) * WIDTH) / bounds.width,
-      y: ((event.clientY - bounds.top) * HEIGHT) / bounds.height,
-    };
-  }
-
-  function pointInside(point, rectangle) {
-    return (
-      point.x >= rectangle.x &&
-      point.x < rectangle.x + rectangle.width &&
-      point.y >= rectangle.y &&
-      point.y < rectangle.y + rectangle.height
-    );
-  }
-
-  canvas.addEventListener("pointermove", (event) => {
-    pointerPosition = canvasPoint(event);
-    const interactive =
-      (state === "menu" && (
-        pointInside(pointerPosition, MENU_PLAY_BUTTON) ||
-        pointInside(pointerPosition, MENU_SHOP_BUTTON) ||
-        pointInside(pointerPosition, SOUND_BUTTON) ||
-        pointInside(pointerPosition, FULLSCREEN_BUTTON)
-      )) ||
-      (state === "shop" && (
-        pointInside(pointerPosition, SHOP_BACK_BUTTON) ||
-        pointInside(pointerPosition, SOUND_BUTTON) ||
-        pointInside(pointerPosition, FULLSCREEN_BUTTON) ||
-        SHOP_CARDS.some((card) => pointInside(pointerPosition, shopActionButton(card)))
-      )) ||
-      (state === "gameover" && (
-        pointInside(pointerPosition, GAMEOVER_RESTART_BUTTON) ||
-        pointInside(pointerPosition, GAMEOVER_MENU_BUTTON)
-      ));
-    canvas.style.cursor = interactive ? "pointer" : "default";
-  });
-
-  canvas.addEventListener("pointerleave", () => {
-    pointerPosition = { x: -1, y: -1 };
-    canvas.style.cursor = "default";
-  });
-
   canvas.addEventListener("pointerdown", (event) => {
-    if (event.pointerType === "mouse" && event.button !== 0) {
-      return;
-    }
+    if (event.pointerType === "mouse" && event.button !== 0) return;
     event.preventDefault();
     canvas.focus({ preventScroll: true });
-    const point = canvasPoint(event);
-
-    if (state === "menu") {
-      if (pointInside(point, SOUND_BUTTON)) {
-        toggleSound();
-      } else if (pointInside(point, FULLSCREEN_BUTTON)) {
-        toggleFullscreen();
-      } else if (pointInside(point, MENU_PLAY_BUTTON)) {
-        startGame();
-      } else if (pointInside(point, MENU_SHOP_BUTTON)) {
-        showShop();
-      }
-    } else if (state === "shop") {
-      if (pointInside(point, SOUND_BUTTON)) {
-        toggleSound();
-      } else if (pointInside(point, FULLSCREEN_BUTTON)) {
-        toggleFullscreen();
-      } else if (pointInside(point, SHOP_BACK_BUTTON)) {
-        showMainMenu();
-      } else {
-        const selectedCard = SHOP_CARDS.find((card) => pointInside(point, shopActionButton(card)));
-        if (selectedCard) {
-          handleSkinAction(selectedCard.skin);
-        }
-      }
-    } else if (state === "gameover") {
-      if (pointInside(point, GAMEOVER_RESTART_BUTTON)) {
-        startGame();
-      } else if (pointInside(point, GAMEOVER_MENU_BUTTON)) {
-        showMainMenu();
-      }
-    } else {
-      jump();
-    }
+    jump();
   });
 
   window.addEventListener("keydown", (event) => {
+    // Enter/Espacio activan el botón enfocado; Escape mantiene la navegación global.
+    if ((event.code === "Space" || event.code === "Enter") &&
+      event.target instanceof HTMLElement && event.target.closest("button")) return;
     if (state === "playing" && event.code === "Space") {
       event.preventDefault();
       jump();
@@ -1087,9 +816,29 @@
     }
   });
 
+  buildShopInterface();
+  for (const [id, handler] of Object.entries({
+    "play-button": startGame,
+    "restart-button": startGame,
+    "shop-button": showShop,
+    "back-button": showMainMenu,
+    "menu-button": showMainMenu,
+    "sound-button": toggleSound,
+    "fullscreen-button": toggleFullscreen,
+  })) {
+    document.getElementById(id).addEventListener("click", handler);
+  }
+  resizeGame();
+  if (window.ResizeObserver) {
+    new ResizeObserver(resizeGame).observe(canvas);
+  } else {
+    window.addEventListener("resize", resizeGame);
+  }
+
   loadAssets()
     .then(() => {
       state = "menu";
+      syncInterface();
       previousTime = performance.now();
       animationFrameId = requestAnimationFrame(frame);
     })
