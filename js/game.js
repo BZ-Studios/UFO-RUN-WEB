@@ -243,7 +243,7 @@
       elements.card.classList.toggle("owned", owned);
       elements.card.classList.toggle("equipped", equipped);
       elements.ownership.textContent = owned ? "En tu colección" : "Desbloquear";
-      elements.button.textContent = equipped ? "Equipada" : owned ? "Equipar" : `${skin.cost} CR`;
+      elements.button.textContent = equipped ? "Equipada" : owned ? "Equipar" : `${skin.cost} créditos`;
       elements.button.disabled = equipped;
       elements.button.setAttribute("aria-label", equipped ? `${skin.name} equipada` : owned
         ? `Equipar ${skin.name}` : `Comprar ${skin.name} por ${skin.cost} créditos`);
