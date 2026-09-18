@@ -9,6 +9,10 @@ Versión web de UFO RUN, un juego arcade de estética pixel-art espacial.
 - Usa la estrella para obtener invencibilidad temporal.
 - Los puntos se guardan como monedas para desbloquear naves en el hangar.
 
+## Portada promocional
+
+La [portada de UFO RUN](src/ufo-run-cover.png) está lista para utilizarse en la página principal de Byz. El [prompt y las referencias](docs/ufo-run-cover.md) quedan documentados.
+
 ## Ejecutar localmente
 
 El proyecto es estático. Puede abrirse con cualquier servidor HTTP local; por ejemplo:
