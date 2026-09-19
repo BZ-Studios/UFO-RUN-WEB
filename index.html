@@ -17,20 +17,21 @@
         height="600"
         tabindex="0"
         role="application"
-        aria-label="UFO RUN. Juego arcade con tienda de naves. Usa espacio, clic o toque para saltar y recoge planetas para sumar dos puntos."
+        aria-label="UFO RUN. Juego arcade con tienda de naves. Usa espacio, clic o toque para saltar y recoge planetas para sumar un punto. Esquiva los pinchos y asteroides."
       >
         Tu navegador no admite Canvas 2D.
       </canvas>
       <p id="game-hud" class="game-hud" hidden>Puntaje: 0</p>
+      <p id="invincible-label" class="game-status" hidden>INVENCIBLE</p>
+      <header id="toolbar" class="toolbar" hidden>
+        <button id="back-button" class="control back-button" type="button" hidden>Volver</button>
+        <div class="toolbar-actions">
+          <span class="wallet" aria-label="Monedas disponibles"><span aria-hidden="true">✦</span> <span data-credits>0</span></span>
+          <button id="sound-button" class="control icon-control" type="button" aria-label="Silenciar sonido" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h4l5-4v14l-5-4H3z"/><path class="sound-waves" d="M16 8q5 4 0 8M19 5q8 7 0 14"/></svg></button>
+          <button id="fullscreen-button" class="control icon-control" type="button" aria-label="Pantalla completa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M3 15v6h6M21 15v6h-6"/></svg></button>
+        </div>
+      </header>
       <section id="interface" class="interface" aria-label="Interfaz de UFO RUN" hidden>
-        <header class="toolbar">
-          <button id="back-button" class="control back-button" type="button" hidden>Volver</button>
-          <div class="toolbar-actions">
-            <span class="wallet" aria-label="Monedas disponibles"><span aria-hidden="true">✦</span> <span data-credits>0</span></span>
-            <button id="sound-button" class="control icon-control" type="button" aria-label="Silenciar sonido" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h4l5-4v14l-5-4H3z"/><path class="sound-waves" d="M16 8q5 4 0 8M19 5q8 7 0 14"/></svg></button>
-            <button id="fullscreen-button" class="control icon-control" type="button" aria-label="Pantalla completa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M3 15v6h6M21 15v6h-6"/></svg></button>
-          </div>
-        </header>
         <div id="menu-screen" class="screen menu-screen" hidden>
           <div class="menu-heading"><h1>UFO <span>RUN</span></h1><p class="tagline">Vuela · Esquiva · Explora</p></div>
           <figure class="ship-preview"><img id="equipped-preview" src="src/ufo_principal.png" alt="Nave equipada"><figcaption id="equipped-name">Clásica</figcaption></figure>
@@ -45,8 +46,9 @@
         <div id="gameover-screen" class="screen gameover-screen" hidden>
           <h2>Misión terminada</h2><p class="final-score">Puntaje <strong id="final-score">0</strong></p><p id="run-reward" class="run-reward">+0 monedas guardadas</p>
           <div class="gameover-actions"><button id="restart-button" class="action primary" type="button">Reiniciar</button><button id="menu-button" class="action secondary" type="button">Menú principal</button></div>
-          <p class="final-record">Mejor puntaje <strong data-best-score>0</strong></p><p class="authors">Créditos<span>Luis Zabala / Agustín Bustamante</span></p>
+          <p class="final-record">Mejor puntaje <strong data-best-score>0</strong></p>
         </div>
+        <footer id="authors-footer" class="authors interface-footer" hidden>Créditos<span>Luis Zabala / Agustín Bustamante</span></footer>
       </section>
     </main>
     <noscript>UFO RUN necesita JavaScript para funcionar.</noscript>

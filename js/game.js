@@ -14,13 +14,12 @@
   let UFO_X = 150;
   const UFO_WIDTH = 55;
   const UFO_HEIGHT = 38;
-  const UFO_HITBOX_WIDTH = UFO_WIDTH - 5;
-  const UFO_HITBOX_HEIGHT = UFO_HEIGHT - 5;
   const GRAVITY = 0.25;
   const JUMP_IMPULSE = -6;
 
-  const SPIKE_WIDTH = 80;
-  let SPIKE_HEIGHT = 400;
+  const SPIKE_WIDTH = 100;
+  const SPIKE_SOURCE_HEIGHT = 200;
+  let SPIKE_HEIGHT = 600;
   const INITIAL_SPIKE_FREQUENCY = 90;
   const INITIAL_SPIKE_SPEED = 3;
   const MOBILE_SPIKE_INTERVAL_MULTIPLIER = 1.65;
@@ -30,10 +29,13 @@
 
   const POWERUP_SIZE = 50;
   const POWERUP_SPEED = 4;
-  const INVINCIBILITY_DURATION = 320;
+  const INVINCIBILITY_DURATION = 640;
   const COLOR_CHANGE_FREQUENCY = 120;
   const PLANET_SIZE = 80;
-  const PLANET_OBSTACLE_INTERVAL = 10;
+  const PLANET_OBSTACLE_INTERVAL = 3;
+  const STAR_OBSTACLE_INTERVAL = 12;
+  const ASTEROID_SIZE = 64;
+  const ASTEROID_OBSTACLE_INTERVAL = STAR_OBSTACLE_INTERVAL;
 
 
   const PROFILE_STORAGE_KEY = "ufoRunProfileV1";
@@ -68,8 +70,9 @@
     ufoYellow: "src/ufo_amarillo.png",
     ufoBlue: "src/ufo_azul.png",
     powerup: "src/powerup_star.png",
-    spikeTop: "src/pincho_alto.jpg",
-    spikeBottom: "src/pincho_bajo.jpg",
+    spikeTop: "src/Pincho_alto.png",
+    spikeBottom: "src/Pincho_bajo.png",
+    asteroid: "src/Asteroide.png",
     planetMercury: "src/planetas/Mercurio.png",
     planetVenus: "src/planetas/Venus.png",
     planetEarth: "src/planetas/Tierra.png",
@@ -82,7 +85,6 @@
   };
 
   const images = {};
-  let multicolor = [];
   let planetSprites = [];
 
   const backgroundMusic = new Audio("src/musica/musica_fondo_2.mp3");
@@ -172,13 +174,19 @@
   let powerupY = HEIGHT / 2;
   let colorIndex = 0;
   let colorChangeTime = 0;
-  let scoreSoundActive = false;
   let planetActive = false;
   let planetPending = false;
   let nextPlanetAt = PLANET_OBSTACLE_INTERVAL;
   let planetX = WIDTH;
   let planetY = HEIGHT / 2;
   let currentPlanet = null;
+  let powerupVelocityY = 0;
+  let nextStarAt = STAR_OBSTACLE_INTERVAL;
+  let starPending = false;
+  let nextAsteroidAt = ASTEROID_OBSTACLE_INTERVAL / 2;
+  let asteroids = [];
+  let feedback = [];
+  const spriteCache = new Map();
 
   const interfaceElement = document.getElementById("interface");
   const gameHud = document.getElementById("game-hud");
@@ -212,6 +220,10 @@
   }
 
   function syncInterface() {
+    document.getElementById("toolbar").hidden = state === "loading";
+    document.querySelector(".wallet").hidden = state === "playing";
+    document.getElementById("authors-footer").hidden = state !== "gameover";
+    document.getElementById("invincible-label").hidden = state !== "playing" || !invincible;
     gameHud.hidden = state !== "playing";
     interfaceElement.hidden = !screenElements[state];
     for (const [name, screen] of Object.entries(screenElements)) {
@@ -264,7 +276,7 @@
     WIDTH = aspect < 1 ? 450 : 600 * aspect;
     HEIGHT = aspect < 1 ? 450 / aspect : 600;
     UFO_X = WIDTH * 0.1875;
-    SPIKE_HEIGHT = Math.max(400, HEIGHT);
+    SPIKE_HEIGHT = Math.max(SPIKE_SOURCE_HEIGHT, Math.ceil(HEIGHT));
     const centerShift = (HEIGHT - oldHeight) / 2;
     ufoY = Math.max(1, Math.min(HEIGHT - UFO_HEIGHT, ufoY * HEIGHT / oldHeight));
     for (const spike of spikes) {
@@ -277,6 +289,20 @@
     planetX *= WIDTH / oldWidth;
     powerupY += centerShift;
     planetY += centerShift;
+    powerupY = Math.max(20, Math.min(HEIGHT - POWERUP_SIZE - 20, powerupY));
+    planetY = Math.max(20, Math.min(HEIGHT - PLANET_SIZE - 20, planetY));
+    for (const asteroid of asteroids) {
+      asteroid.x *= WIDTH / oldWidth;
+      asteroid.y = Math.max(0, Math.min(HEIGHT - ASTEROID_SIZE, asteroid.y + centerShift));
+    }
+    for (const item of feedback) {
+      item.x *= WIDTH / oldWidth;
+      item.y += centerShift;
+    }
+    if (SPIKE_HEIGHT !== oldSpikeHeight) {
+      spriteCache.delete("spikeTop");
+      spriteCache.delete("spikeBottom");
+    }
     const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(bounds.width * pixelRatio);
     canvas.height = Math.round(bounds.height * pixelRatio);
@@ -298,7 +324,6 @@
     entries.forEach(([name], index) => {
       images[name] = loaded[index];
     });
-    multicolor = [images.ufo, images.ufoRed, images.ufoYellow, images.ufoBlue];
     planetSprites = planetCropSources.map((crop) => ({
       image: images[crop.imageName],
       ...crop,
@@ -367,17 +392,23 @@
     powerupY = HEIGHT / 2;
     colorIndex = 0;
     colorChangeTime = 0;
-    scoreSoundActive = false;
     planetActive = false;
     planetPending = false;
     nextPlanetAt = PLANET_OBSTACLE_INTERVAL;
     planetX = WIDTH;
     planetY = HEIGHT / 2;
     currentPlanet = null;
+    powerupVelocityY = 0;
+    nextStarAt = STAR_OBSTACLE_INTERVAL;
+    starPending = false;
+    nextAsteroidAt = ASTEROID_OBSTACLE_INTERVAL / 2;
+    asteroids = [];
+    feedback = [];
     lastReward = 0;
     shopMessage = "";
     accumulator = 0;
     state = "playing";
+    gameHud.textContent = "Puntaje: 0";
     syncInterface();
 
     stopAudio(invincibilitySound, true);
@@ -452,7 +483,8 @@
   }
 
   function createSpikes(x) {
-    const gapCenter = HEIGHT / 2 + 75 - Math.floor(Math.random() * 151);
+    const spread = Math.min(150, HEIGHT * 0.18);
+    const gapCenter = randomBetween(HEIGHT / 2 - spread, HEIGHT / 2 + spread);
     return {
       topX: x,
       topY: gapCenter - 90 - SPIKE_HEIGHT,
@@ -462,6 +494,18 @@
     };
   }
 
+  function randomBetween(min, max) {
+    return min + Math.random() * Math.max(0, max - min);
+  }
+
+  function collectibleY(size) {
+    const ahead = spikes.filter((spike) => spike.topX > UFO_X)
+      .sort((a, b) => b.topX - a.topX)[0];
+    const min = ahead ? ahead.topY + SPIKE_HEIGHT + 12 : 60;
+    const max = ahead ? ahead.bottomY - size - 12 : HEIGHT - size - 60;
+    return randomBetween(Math.max(20, min), Math.min(HEIGHT - size - 20, max));
+  }
+
   function activateRandomPlanet() {
     if (planetActive || powerupActive) {
       planetPending = true;
@@ -469,42 +513,172 @@
     }
     currentPlanet = planetSprites[Math.floor(Math.random() * planetSprites.length)];
     planetX = WIDTH;
-    planetY = HEIGHT / 2;
+    planetY = collectibleY(PLANET_SIZE);
     planetActive = true;
     planetPending = false;
   }
 
-  function rectanglesOverlap(a, b) {
-    return (
-      a.x < b.x + b.width &&
-      a.x + a.width > b.x &&
-      a.y < b.y + b.height &&
-      a.y + a.height > b.y
-    );
+  function activateStar() {
+    // No reutilizar ni recolocar una estrella que ya está atravesando la pantalla.
+    if (powerupActive || planetActive || invincible) {
+      starPending = true;
+      return;
+    }
+    powerupX = WIDTH;
+    powerupY = collectibleY(POWERUP_SIZE);
+    powerupVelocityY = (Math.random() < 0.5 ? -1 : 1) * randomBetween(0.6, 1);
+    powerupActive = true;
+    starPending = false;
   }
 
-  function collidesWithSpikes(ufoRect) {
-    for (const spike of spikes) {
-      const topRect = {
-        x: Math.trunc(spike.topX),
-        y: Math.trunc(spike.topY),
-        width: SPIKE_WIDTH,
-        height: SPIKE_HEIGHT,
-      };
-      const bottomRect = {
-        x: Math.trunc(spike.bottomX),
-        y: Math.trunc(spike.bottomY),
-        width: SPIKE_WIDTH,
-        height: SPIKE_HEIGHT,
-      };
-      if (rectanglesOverlap(ufoRect, topRect) || rectanglesOverlap(ufoRect, bottomRect)) {
-        return true;
+  function activateAsteroid() {
+    asteroids.push({
+      x: WIDTH,
+      y: randomBetween(40, HEIGHT - ASTEROID_SIZE - 40),
+      velocityY: (Math.random() < 0.5 ? -1 : 1) * randomBetween(0.8, 1.4),
+    });
+  }
+
+  function moveDiagonal(item, size, speed) {
+    item.x -= speed * WIDTH / 800;
+    item.y += item.velocityY;
+    if (item.y < 20) {
+      item.y = 20;
+      item.velocityY = Math.abs(item.velocityY);
+    } else if (item.y > HEIGHT - size - 20) {
+      item.y = HEIGHT - size - 20;
+      item.velocityY = -Math.abs(item.velocityY);
+    }
+  }
+
+  function addFeedback(text, x, y, color) {
+    feedback.push({ text, x, y, color, age: 0, duration: 80 });
+  }
+
+  function rasterSprite(surface) {
+    const pixels = surface.getContext("2d").getImageData(0, 0, surface.width, surface.height).data;
+    const mask = new Uint8Array(surface.width * surface.height);
+    for (let index = 0; index < mask.length; index += 1) {
+      mask[index] = pixels[index * 4 + 3] > 100 ? 1 : 0;
+    }
+    return { image: surface, width: surface.width, height: surface.height, mask };
+  }
+
+  function spriteSurface(width, height) {
+    const surface = document.createElement("canvas");
+    surface.width = width;
+    surface.height = height;
+    surface.getContext("2d").imageSmoothingEnabled = false;
+    return surface;
+  }
+
+  function getSprite(name) {
+    if (spriteCache.has(name)) return spriteCache.get(name);
+    let surface;
+    if (name === "spikeTop" || name === "spikeBottom") {
+      // Conserva el extremo original 100x200; repite el cuerpo sin estirar sus puntas.
+      surface = spriteSurface(SPIKE_WIDTH, SPIKE_HEIGHT);
+      const ctx = surface.getContext("2d");
+      const top = name === "spikeTop";
+      const tipY = top ? SPIKE_HEIGHT - SPIKE_SOURCE_HEIGHT : 0;
+      ctx.drawImage(images[name], 0, tipY);
+      const bodyStart = top ? 0 : SPIKE_SOURCE_HEIGHT;
+      const bodyEnd = top ? tipY : SPIKE_HEIGHT;
+      for (let y = bodyStart; y < bodyEnd; y += 160) {
+        const height = Math.min(160, bodyEnd - y);
+        ctx.drawImage(images[name], 0, top ? 0 : 40, 100, height, 0, y, 100, height);
+      }
+    } else if (name === "asteroid") {
+      const source = images.asteroid;
+      const scan = spriteSurface(source.width, source.height);
+      scan.getContext("2d").drawImage(source, 0, 0);
+      const data = scan.getContext("2d").getImageData(0, 0, source.width, source.height).data;
+      let left = source.width, right = 0, top = source.height, bottom = 0;
+      for (let y = 0; y < source.height; y += 1) {
+        for (let x = 0; x < source.width; x += 1) {
+          if (data[(y * source.width + x) * 4 + 3] > 100) {
+            left = Math.min(left, x); right = Math.max(right, x);
+            top = Math.min(top, y); bottom = Math.max(bottom, y);
+          }
+        }
+      }
+      surface = spriteSurface(ASTEROID_SIZE, ASTEROID_SIZE);
+      surface.getContext("2d").drawImage(source, left, top, right - left + 1, bottom - top + 1,
+        0, 0, ASTEROID_SIZE, ASTEROID_SIZE);
+    } else {
+      surface = spriteSurface(POWERUP_SIZE, POWERUP_SIZE);
+      surface.getContext("2d").drawImage(images[name], 0, 0, POWERUP_SIZE, POWERUP_SIZE);
+    }
+    const sprite = rasterSprite(surface);
+    spriteCache.set(name, sprite);
+    return sprite;
+  }
+
+  function getPlanetSprite() {
+    const key = currentPlanet.imageName;
+    if (spriteCache.has(key)) return spriteCache.get(key);
+    const surface = spriteSurface(PLANET_SIZE, PLANET_SIZE);
+    const crop = currentPlanet;
+    const scale = Math.min(PLANET_SIZE / crop.width, PLANET_SIZE / crop.height);
+    const width = crop.width * scale, height = crop.height * scale;
+    surface.getContext("2d").drawImage(crop.image, crop.x, crop.y, crop.width, crop.height,
+      (PLANET_SIZE - width) / 2, (PLANET_SIZE - height) / 2, width, height);
+    const sprite = rasterSprite(surface);
+    spriteCache.set(key, sprite);
+    return sprite;
+  }
+
+  function getUfoSprite(dead = false) {
+    const name = dead ? "ufoDead" : invincible
+      ? ["ufo", "ufoRed", "ufoYellow", "ufoBlue"][colorIndex] : selectedSkin().imageName;
+    const angle = jumpVelocity < 0 ? -10 : 10;
+    const key = name + ":" + angle;
+    if (spriteCache.has(key)) return spriteCache.get(key);
+    const radians = -angle * Math.PI / 180;
+    const width = Math.ceil(UFO_WIDTH * Math.cos(radians) + UFO_HEIGHT * Math.abs(Math.sin(radians)));
+    const height = Math.ceil(UFO_HEIGHT * Math.cos(radians) + UFO_WIDTH * Math.abs(Math.sin(radians)));
+    const surface = spriteSurface(width, height);
+    const ctx = surface.getContext("2d");
+    ctx.translate(width / 2, height / 2);
+    ctx.rotate(radians);
+    ctx.drawImage(images[name], -UFO_WIDTH / 2, -UFO_HEIGHT / 2, UFO_WIDTH, UFO_HEIGHT);
+    const sprite = rasterSprite(surface);
+    spriteCache.set(key, sprite);
+    return sprite;
+  }
+
+  function spriteRect(sprite, x, y) {
+    return { sprite, x: Math.trunc(x), y: Math.trunc(y), width: sprite.width, height: sprite.height };
+  }
+
+  function rectanglesOverlap(a, b) {
+    return a.x < b.x + b.width && a.x + a.width > b.x &&
+      a.y < b.y + b.height && a.y + a.height > b.y;
+  }
+
+  function opaqueOverlap(a, b) {
+    if (!rectanglesOverlap(a, b)) return false;
+    const left = Math.max(a.x, b.x), right = Math.min(a.x + a.width, b.x + b.width);
+    const top = Math.max(a.y, b.y), bottom = Math.min(a.y + a.height, b.y + b.height);
+    for (let y = top; y < bottom; y += 1) {
+      for (let x = left; x < right; x += 1) {
+        if (a.sprite.mask[(y - a.y) * a.width + x - a.x] &&
+          b.sprite.mask[(y - b.y) * b.width + x - b.x]) return true;
       }
     }
     return false;
   }
 
+  function collidesWithSpikes(ufoRect) {
+    for (const spike of spikes) {
+      if (opaqueOverlap(ufoRect, spriteRect(getSprite("spikeTop"), spike.topX, spike.topY)) ||
+        opaqueOverlap(ufoRect, spriteRect(getSprite("spikeBottom"), spike.bottomX, spike.bottomY))) return true;
+    }
+    return false;
+  }
+
   function finishFrameAsGameOver() {
+    if (state !== "playing") return;
     lastReward = Math.max(0, score);
     profile.credits += lastReward;
     profile.bestScore = Math.max(profile.bestScore, score);
@@ -512,24 +686,17 @@
     state = "gameover";
     syncInterface();
     accumulator = 0;
+    stopAudio(backgroundMusic);
+    stopAudio(invincibilitySound, true);
   }
 
   function updateGame() {
-    let diedThisFrame = false;
-
     jumpVelocity += GRAVITY;
     ufoY += jumpVelocity;
-
-    if (ufoY >= HEIGHT || ufoY <= 0) {
-      playEffect(deathSound);
-      if (invincible) {
-        stopAudio(invincibilitySound, true);
-      }
-      diedThisFrame = true;
-    }
+    const ufoRect = spriteRect(getUfoSprite(), UFO_X, ufoY);
+    let diedThisFrame = ufoRect.y < 0 || ufoRect.y + ufoRect.height > HEIGHT;
 
     spikeCounter += 1;
-    // Más tiempo entre parejas en móvil: mayor separación sin cambiar su velocidad.
     const spawnInterval = mobileLayoutQuery.matches
       ? Math.ceil(spikeFrequency * MOBILE_SPIKE_INTERVAL_MULTIPLIER) : spikeFrequency;
     if (spikeCounter > spawnInterval) {
@@ -541,237 +708,164 @@
     for (const spike of spikes) {
       spike.topX -= spikeSpeed * WIDTH / 800;
       spike.bottomX -= spikeSpeed * WIDTH / 800;
-
-      if (spike.topX + SPIKE_WIDTH > 0) {
-        remainingSpikes.push(spike);
-
-        if (!spike.counted && UFO_X > spike.topX && !scoreSoundActive) {
-          scoreSoundActive = true;
-          playEffect(scoreSound);
+      if (spike.topX + SPIKE_WIDTH <= 0) continue;
+      remainingSpikes.push(spike);
+      if (!spike.counted && UFO_X > spike.topX + SPIKE_WIDTH) {
+        spike.counted = true;
+        passedObstacles += 1;
+        score += 1;
+        playEffect(scoreSound);
+        if (passedObstacles < 44 && passedObstacles % 4 === 0) {
+          spikeSpeed += 0.5;
+          spikeFrequency -= 5;
         }
-
-        if (!spike.counted && UFO_X > spike.topX + SPIKE_WIDTH) {
-          spike.counted = true;
-          passedObstacles += 1;
-          score += 1;
-          scoreSoundActive = false;
-
-          if (passedObstacles < 44 && passedObstacles % 4 === 0) {
-            spikeSpeed += 0.5;
-            spikeFrequency -= 5;
-          }
-
-          if (passedObstacles % 4 === 0 && !planetActive && !planetPending) {
-            powerupActive = true;
-          }
-
-          if (passedObstacles >= nextPlanetAt) {
-            planetPending = true;
-            nextPlanetAt += PLANET_OBSTACLE_INTERVAL;
-          }
+        if (passedObstacles >= nextPlanetAt) {
+          planetPending = true;
+          nextPlanetAt += PLANET_OBSTACLE_INTERVAL;
+        }
+        if (passedObstacles >= nextStarAt) {
+          activateStar();
+          nextStarAt += STAR_OBSTACLE_INTERVAL;
+        }
+        if (passedObstacles >= nextAsteroidAt) {
+          activateAsteroid();
+          nextAsteroidAt += ASTEROID_OBSTACLE_INTERVAL;
         }
       }
     }
-
     spikes = remainingSpikes;
 
-    colorChangeTime += spikeCounter;
-    if (colorChangeTime > COLOR_CHANGE_FREQUENCY) {
-      colorIndex = (colorIndex + 1) % multicolor.length;
+    colorChangeTime += 1;
+    if (colorChangeTime >= COLOR_CHANGE_FREQUENCY) {
+      colorIndex = (colorIndex + 1) % 4;
       colorChangeTime = 0;
     }
 
-    const ufoRect = {
-      x: UFO_X,
-      y: Math.trunc(ufoY),
-      width: UFO_HITBOX_WIDTH,
-      height: UFO_HITBOX_HEIGHT,
-    };
-
     if (powerupActive) {
-      powerupX -= POWERUP_SPEED * WIDTH / 800;
-      const powerupRect = {
-        x: Math.trunc(powerupX),
-        y: Math.trunc(powerupY),
-        width: POWERUP_SIZE,
-        height: POWERUP_SIZE,
-      };
-
-      if (rectanglesOverlap(ufoRect, powerupRect)) {
-        playAudio(invincibilitySound, true);
+      const star = { x: powerupX, y: powerupY, velocityY: powerupVelocityY };
+      moveDiagonal(star, POWERUP_SIZE, POWERUP_SPEED);
+      powerupX = star.x;
+      powerupY = star.y;
+      powerupVelocityY = star.velocityY;
+      if (opaqueOverlap(ufoRect, spriteRect(getSprite("powerup"), powerupX, powerupY))) {
         invincible = true;
+        invincibleTime = 0;
         powerupActive = false;
-        powerupX = WIDTH;
-      }
-
-      if (powerupX + POWERUP_SIZE < 0) {
+        addFeedback("INVENCIBLE", UFO_X + UFO_WIDTH / 2, ufoY - 18, "#ffd648");
+        playAudio(invincibilitySound, true);
+      } else if (powerupX + POWERUP_SIZE < 0) {
         powerupActive = false;
-        powerupX = WIDTH;
       }
     }
 
-    if (planetPending && !powerupActive && !planetActive) {
-      activateRandomPlanet();
-    }
-
+    if (starPending && !powerupActive && !planetActive && !invincible) activateStar();
+    if (planetPending && !powerupActive && !planetActive && !starPending) activateRandomPlanet();
     if (planetActive) {
       planetX -= spikeSpeed * WIDTH / 800;
-      const planetRect = {
-        x: Math.trunc(planetX),
-        y: Math.trunc(planetY),
-        width: PLANET_SIZE,
-        height: PLANET_SIZE,
-      };
-
-      if (rectanglesOverlap(ufoRect, planetRect)) {
-        score += 2;
+      if (opaqueOverlap(ufoRect, spriteRect(getPlanetSprite(), planetX, planetY))) {
+        score += 1;
         playEffect(scoreSound);
+        addFeedback("+1", planetX + PLANET_SIZE / 2, planetY, "#50dcff");
         planetActive = false;
-        planetX = WIDTH;
-      }
-
-      if (planetX + PLANET_SIZE < 0) {
+      } else if (planetX + PLANET_SIZE < 0) {
         planetActive = false;
-        planetX = WIDTH;
       }
     }
 
-    if (collidesWithSpikes(ufoRect) && !invincible) {
-      playEffect(deathSound);
-      diedThisFrame = true;
+    for (const asteroid of asteroids) {
+      moveDiagonal(asteroid, ASTEROID_SIZE, POWERUP_SPEED);
+      if (!invincible && opaqueOverlap(ufoRect, spriteRect(getSprite("asteroid"), asteroid.x, asteroid.y))) {
+        diedThisFrame = true;
+      }
     }
+    asteroids = asteroids.filter((asteroid) => asteroid.x + ASTEROID_SIZE >= 0);
+    if (!invincible && collidesWithSpikes(ufoRect)) diedThisFrame = true;
 
     if (invincible) {
       invincibleTime += 1;
-      if (invincibleTime > INVINCIBILITY_DURATION) {
+      if (invincibleTime >= INVINCIBILITY_DURATION) {
         stopAudio(invincibilitySound, true);
         invincible = false;
         invincibleTime = 0;
-        powerupX = WIDTH;
-        powerupY = HEIGHT / 2;
+        // No modificar la posición de ninguna estrella al terminar el efecto.
       }
     }
+    feedback.forEach((item) => { item.age += 1; });
+    feedback = feedback.filter((item) => item.age < item.duration);
 
     if (diedThisFrame) {
+      playEffect(deathSound);
       finishFrameAsGameOver();
     }
   }
 
-  function drawBackground() {
-    context.clearRect(0, 0, WIDTH, HEIGHT);
-  }
-
-
-
-
-  function rotatedBounds(width, height, degrees) {
-    const radians = Math.abs((degrees * Math.PI) / 180);
-    return {
-      width: Math.ceil(width * Math.cos(radians) + height * Math.sin(radians)),
-      height: Math.ceil(width * Math.sin(radians) + height * Math.cos(radians)),
-    };
-  }
-
-  function drawRotatedAtTopLeft(image, x, y, degrees) {
-    const bounds = rotatedBounds(image.width, image.height, degrees);
-    context.save();
+  function drawSprite(sprite, x, y) {
     context.imageSmoothingEnabled = false;
-    context.translate(x + bounds.width / 2, y + bounds.height / 2);
-    context.rotate((-degrees * Math.PI) / 180);
-    context.drawImage(image, -image.width / 2, -image.height / 2);
-    context.restore();
+    context.drawImage(sprite.image, Math.trunc(x), Math.trunc(y));
   }
 
   function drawSpikes() {
-    context.imageSmoothingEnabled = false;
     for (const spike of spikes) {
-      context.drawImage(
-        images.spikeTop,
-        Math.trunc(spike.topX),
-        Math.trunc(spike.topY),
-        SPIKE_WIDTH,
-        SPIKE_HEIGHT,
-      );
-      context.drawImage(
-        images.spikeBottom,
-        Math.trunc(spike.bottomX),
-        Math.trunc(spike.bottomY),
-        SPIKE_WIDTH,
-        SPIKE_HEIGHT,
-      );
+      drawSprite(getSprite("spikeTop"), spike.topX, spike.topY);
+      drawSprite(getSprite("spikeBottom"), spike.bottomX, spike.bottomY);
     }
-
   }
 
-  function drawPlanet() {
-    if (!planetActive || !currentPlanet) {
-      return;
-    }
-    const scale = Math.min(
-      PLANET_SIZE / currentPlanet.width,
-      PLANET_SIZE / currentPlanet.height,
-    );
-    const drawWidth = currentPlanet.width * scale;
-    const drawHeight = currentPlanet.height * scale;
-    const drawX = Math.trunc(planetX) + (PLANET_SIZE - drawWidth) / 2;
-    const drawY = Math.trunc(planetY) + (PLANET_SIZE - drawHeight) / 2;
-
-    context.imageSmoothingEnabled = true;
-    context.drawImage(
-      currentPlanet.image,
-      currentPlanet.x,
-      currentPlanet.y,
-      currentPlanet.width,
-      currentPlanet.height,
-      drawX,
-      drawY,
-      drawWidth,
-      drawHeight,
-    );
-  }
-
-
-  function renderPlaying() {
-    drawBackground();
+  function drawWorld() {
+    context.clearRect(0, 0, WIDTH, HEIGHT);
     drawSpikes();
-
-    const angle = jumpVelocity < 0 ? -10 : 10;
-    const sprite = invincible ? multicolor[colorIndex] : images[selectedSkin().imageName];
-    drawRotatedAtTopLeft(sprite, UFO_X, Math.trunc(ufoY), angle);
-
-    if (powerupActive) {
-      context.imageSmoothingEnabled = false;
-      context.drawImage(
-        images.powerup,
-        Math.trunc(powerupX),
-        Math.trunc(powerupY),
-        POWERUP_SIZE,
-        POWERUP_SIZE,
-      );
-    }
-
-    drawPlanet();
-
-    const scoreLabel = `Puntaje: ${score}`;
-    if (gameHud.textContent !== scoreLabel) gameHud.textContent = scoreLabel;
+    if (planetActive && currentPlanet) drawSprite(getPlanetSprite(), planetX, planetY);
+    if (powerupActive) drawSprite(getSprite("powerup"), powerupX, powerupY);
+    for (const asteroid of asteroids) drawSprite(getSprite("asteroid"), asteroid.x, asteroid.y);
   }
 
+  function drawFeedback() {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    for (const item of feedback) {
+      const progress = item.age / item.duration;
+      context.save();
+      context.globalAlpha = Math.min(1, (1 - progress) * 3);
+      context.font = '22px "UFO Run", monospace';
+      context.textAlign = "center";
+      context.textBaseline = "bottom";
+      context.fillStyle = item.color;
+      context.shadowColor = "#000";
+      context.shadowBlur = 5;
+      context.fillText(item.text, Math.max(90, Math.min(WIDTH - 90, item.x)),
+        Math.max(55, item.y - (reducedMotion ? 0 : progress * 48)));
+      context.restore();
+    }
+  }
 
   function render() {
-    if (state === "playing") {
-      renderPlaying();
-    } else {
-      drawBackground();
-      if (state === "gameover") {
-        drawSpikes();
-        drawPlanet();
-        drawRotatedAtTopLeft(images.ufoDead, UFO_X, Math.trunc(ufoY), 10);
+    if (state === "loading") return;
+    drawWorld();
+    if (state === "playing" || state === "gameover") {
+      const sprite = getUfoSprite(state === "gameover");
+      drawSprite(sprite, UFO_X, ufoY);
+      if (invincible && state === "playing") {
+        context.save();
+        context.strokeStyle = "#50dcff";
+        context.lineWidth = 2;
+        context.shadowColor = "#50dcff";
+        context.shadowBlur = 10;
+        context.beginPath();
+        context.ellipse(UFO_X + sprite.width / 2, ufoY + sprite.height / 2,
+          sprite.width / 2 + 8, sprite.height / 2 + 8, 0, 0, Math.PI * 2);
+        context.stroke();
+        context.restore();
       }
+    }
+    if (state === "playing") {
+      drawFeedback();
+      const scoreLabel = "Puntaje: " + score;
+      document.getElementById("invincible-label").hidden = !invincible;
+      if (gameHud.textContent !== scoreLabel) gameHud.textContent = scoreLabel;
     }
   }
 
   function frame(now) {
-    const elapsed = now - previousTime;
+    const elapsed = Math.min(now - previousTime, 100);
     previousTime = now;
 
     if (state === "playing") {
