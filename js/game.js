@@ -40,10 +40,11 @@
 
   const PROFILE_STORAGE_KEY = "ufoRunProfileV1";
   const SKINS = [
-    { id: "classic", name: "CLASICA", imageName: "ufo", cost: 0, accent: "rgb(64, 210, 122)" },
-    { id: "nova", name: "NOVA ROJA", imageName: "ufoRed", cost: 12, accent: "rgb(235, 74, 80)" },
-    { id: "solar", name: "SOLAR", imageName: "ufoYellow", cost: 24, accent: "rgb(255, 205, 62)" },
-    { id: "pulsar", name: "PULSAR AZUL", imageName: "ufoBlue", cost: 36, accent: "rgb(68, 154, 255)" },
+    { id: "classic", name: "CLASICA", imageName: "ufo", deadImageName: "ufoGreenDead", cost: 0, accent: "rgb(64, 210, 122)" },
+    { id: "nova", name: "NOVA ROJA", imageName: "ufoRed", deadImageName: "ufoRedDead", cost: 12, accent: "rgb(235, 74, 80)" },
+    { id: "solar", name: "SOLAR", imageName: "ufoYellow", deadImageName: "ufoYellowDead", cost: 24, accent: "rgb(255, 205, 62)" },
+    { id: "pulsar", name: "PULSAR AZUL", imageName: "ufoBlue", deadImageName: "ufoBlueDead", cost: 36, accent: "rgb(68, 154, 255)" },
+    { id: "venezuela", name: "VENEZUELA", imageName: "ufoVenezuela", deadImageName: "ufoVenezuelaDead", cost: 48, accent: "rgb(255, 205, 62)" },
   ];
 
   const backgroundSources = ["src/fondo.jpg", "src/Fondo-2.png", "src/Fondo-3.png"];
@@ -65,14 +66,19 @@
     background2: "src/Fondo-2.png",
     background3: "src/Fondo-3.png",
     ufo: "src/ufo_principal.png",
-    ufoDead: "src/ufo_muerto.png",
+    ufoGreenDead: "src/ufo_verde_muerto.png",
     ufoRed: "src/ufo_rojo.png",
+    ufoRedDead: "src/ufo_rojo_muerto.png",
     ufoYellow: "src/ufo_amarillo.png",
+    ufoYellowDead: "src/ufo_amarillo_muerto.png",
     ufoBlue: "src/ufo_azul.png",
+    ufoBlueDead: "src/ufo_azul_muerto.png",
+    ufoVenezuela: "src/ufo_venezuela.png",
+    ufoVenezuelaDead: "src/ufo_venezuela_muerto.png",
     powerup: "src/powerup_star.png",
     spikeTop: "src/Pincho_alto.png",
     spikeBottom: "src/Pincho_bajo.png",
-    asteroid: "src/Asteroide.png",
+    asteroid: "src/Obstaculos/Asteroide.png",
     planetMercury: "src/planetas/Mercurio.png",
     planetVenus: "src/planetas/Venus.png",
     planetEarth: "src/planetas/Tierra.png",
@@ -628,9 +634,13 @@
     return sprite;
   }
 
-  function getUfoSprite(dead = false) {
-    const name = dead ? "ufoDead" : invincible
+  function selectedUfoImageName(dead = false) {
+    return dead ? selectedSkin().deadImageName : invincible
       ? ["ufo", "ufoRed", "ufoYellow", "ufoBlue"][colorIndex] : selectedSkin().imageName;
+  }
+
+  function getUfoSprite(dead = false) {
+    const name = selectedUfoImageName(dead);
     const angle = jumpVelocity < 0 ? -10 : 10;
     const key = name + ":" + angle;
     if (spriteCache.has(key)) return spriteCache.get(key);

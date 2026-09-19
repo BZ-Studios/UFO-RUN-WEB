@@ -78,6 +78,19 @@ test("Rutas de assets válidas y pinchos nuevos de 100x200", () => {
   }
 });
 
+test("Cada skin tiene variante muerta y Venezuela está en la tienda", () => {
+  const skinBlock = source.match(/const SKINS = \[([\s\S]*?)\n  \];/)[1];
+  const skins = [...skinBlock.matchAll(/imageName: "([^"]+)", deadImageName: "([^"]+)"/g)];
+  assert.equal(skins.length, 5);
+  assert(skinBlock.includes('id: "venezuela"'));
+  for (const [, live, dead] of skins) {
+    assert(source.includes(`${live}: "src/`), live);
+    assert(source.includes(`${dead}: "src/`), dead);
+  }
+  assert(source.includes('asteroid: "src/Obstaculos/Asteroide.png"'));
+  assert(source.includes("dead ? selectedSkin().deadImageName"));
+});
+
 test("Las zonas transparentes no colisionan; los píxeles opacos sí", () => {
   const { api } = game();
   const transparent = sprite(3, 3); transparent.mask.fill(0); transparent.mask[4] = 1;

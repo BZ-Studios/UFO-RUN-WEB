@@ -14,6 +14,8 @@ Versión web de UFO RUN, un juego arcade de estética pixel-art espacial.
 
 La [portada de UFO RUN](src/ufo-run-cover.png) está lista para utilizarse en la página principal de Byz. El [prompt y las referencias](docs/ufo-run-cover.md) quedan documentados.
 
+La tienda incluye cinco naves, incluida la skin Venezuela. Cada nave conserva sus colores cuando queda destruida.
+
 ## Ejecutar localmente
 
 El proyecto es estático. Puede abrirse con cualquier servidor HTTP local; por ejemplo:
