@@ -29,7 +29,7 @@
 
   const POWERUP_SIZE = 50;
   const POWERUP_SPEED = 4;
-  const INVINCIBILITY_DURATION = 640;
+  const INVINCIBILITY_FALLBACK_SECONDS = 4;
   const COLOR_CHANGE_FREQUENCY = 120;
   const PLANET_SIZE = 80;
   const PLANET_OBSTACLE_INTERVAL = 3;
@@ -103,6 +103,20 @@
   deathSound.volume = 0.3;
   scoreSound.volume = 0.3;
   invincibilitySound.volume = 0.3;
+
+  let invincibilityDurationFrames = Math.round(INVINCIBILITY_FALLBACK_SECONDS * FPS);
+
+  function syncInvincibilityDuration() {
+    if (Number.isFinite(invincibilitySound.duration) && invincibilitySound.duration > 0) {
+      invincibilityDurationFrames = Math.max(1, Math.round(invincibilitySound.duration * FPS));
+    }
+    return invincibilityDurationFrames;
+  }
+
+  invincibilitySound.addEventListener("loadedmetadata", syncInvincibilityDuration);
+  invincibilitySound.addEventListener("ended", () => {
+    if (invincible && profile.soundEnabled) endInvincibility(false);
+  });
 
   for (const audio of [backgroundMusic, deathSound, scoreSound, invincibilitySound]) {
     audio.preload = "auto";
@@ -185,6 +199,7 @@
   let nextPlanetAt = PLANET_OBSTACLE_INTERVAL;
   let planetX = WIDTH;
   let planetY = HEIGHT / 2;
+  let planetVelocityY = 0;
   let currentPlanet = null;
   let powerupVelocityY = 0;
   let nextStarAt = STAR_OBSTACLE_INTERVAL;
@@ -403,6 +418,7 @@
     nextPlanetAt = PLANET_OBSTACLE_INTERVAL;
     planetX = WIDTH;
     planetY = HEIGHT / 2;
+    planetVelocityY = 0;
     currentPlanet = null;
     powerupVelocityY = 0;
     nextStarAt = STAR_OBSTACLE_INTERVAL;
@@ -512,14 +528,19 @@
     return randomBetween(Math.max(20, min), Math.min(HEIGHT - size - 20, max));
   }
 
+  function spawnFromRight(size) {
+    return WIDTH + size + 24;
+  }
+
   function activateRandomPlanet() {
     if (planetActive || powerupActive) {
       planetPending = true;
       return;
     }
     currentPlanet = planetSprites[Math.floor(Math.random() * planetSprites.length)];
-    planetX = WIDTH;
+    planetX = spawnFromRight(PLANET_SIZE);
     planetY = collectibleY(PLANET_SIZE);
+    planetVelocityY = (Math.random() < 0.5 ? -1 : 1) * randomBetween(0.6, 1);
     planetActive = true;
     planetPending = false;
   }
@@ -530,7 +551,7 @@
       starPending = true;
       return;
     }
-    powerupX = WIDTH;
+    powerupX = spawnFromRight(POWERUP_SIZE);
     powerupY = collectibleY(POWERUP_SIZE);
     powerupVelocityY = (Math.random() < 0.5 ? -1 : 1) * randomBetween(0.6, 1);
     powerupActive = true;
@@ -539,7 +560,7 @@
 
   function activateAsteroid() {
     asteroids.push({
-      x: WIDTH,
+      x: spawnFromRight(ASTEROID_SIZE),
       y: randomBetween(40, HEIGHT - ASTEROID_SIZE - 40),
       velocityY: (Math.random() < 0.5 ? -1 : 1) * randomBetween(0.8, 1.4),
     });
@@ -700,6 +721,13 @@
     stopAudio(invincibilitySound, true);
   }
 
+  function endInvincibility(rewindSound = true) {
+    if (!invincible) return;
+    invincible = false;
+    invincibleTime = 0;
+    if (rewindSound) stopAudio(invincibilitySound, true);
+  }
+
   function updateGame() {
     jumpVelocity += GRAVITY;
     ufoY += jumpVelocity;
@@ -710,7 +738,7 @@
     const spawnInterval = mobileLayoutQuery.matches
       ? Math.ceil(spikeFrequency * MOBILE_SPIKE_INTERVAL_MULTIPLIER) : spikeFrequency;
     if (spikeCounter > spawnInterval) {
-      spikes.push(createSpikes(WIDTH));
+      spikes.push(createSpikes(spawnFromRight(SPIKE_WIDTH)));
       spikeCounter = 0;
     }
 
@@ -760,6 +788,7 @@
       if (opaqueOverlap(ufoRect, spriteRect(getSprite("powerup"), powerupX, powerupY))) {
         invincible = true;
         invincibleTime = 0;
+        syncInvincibilityDuration();
         powerupActive = false;
         addFeedback("INVENCIBLE", UFO_X + UFO_WIDTH / 2, ufoY - 18, "#ffd648");
         playAudio(invincibilitySound, true);
@@ -771,7 +800,11 @@
     if (starPending && !powerupActive && !planetActive && !invincible) activateStar();
     if (planetPending && !powerupActive && !planetActive && !starPending) activateRandomPlanet();
     if (planetActive) {
-      planetX -= spikeSpeed * WIDTH / 800;
+      const planet = { x: planetX, y: planetY, velocityY: planetVelocityY };
+      moveDiagonal(planet, PLANET_SIZE, spikeSpeed);
+      planetX = planet.x;
+      planetY = planet.y;
+      planetVelocityY = planet.velocityY;
       if (opaqueOverlap(ufoRect, spriteRect(getPlanetSprite(), planetX, planetY))) {
         score += 1;
         playEffect(scoreSound);
@@ -793,10 +826,8 @@
 
     if (invincible) {
       invincibleTime += 1;
-      if (invincibleTime >= INVINCIBILITY_DURATION) {
-        stopAudio(invincibilitySound, true);
-        invincible = false;
-        invincibleTime = 0;
+      if (invincibleTime >= invincibilityDurationFrames) {
+        endInvincibility();
         // No modificar la posición de ninguna estrella al terminar el efecto.
       }
     }

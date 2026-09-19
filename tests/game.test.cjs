@@ -20,7 +20,13 @@ function game(width = 390, height = 844, mobile = true) {
     return nodes.get(id);
   }, createElement: element, querySelectorAll: () => [], querySelector: () => element(),
   body: element(), documentElement: {} };
-  class Audio { pause() {} play() { return Promise.resolve(); } cloneNode() { return new Audio(); } }
+  class Audio {
+    constructor() { this.duration = 2; }
+    addEventListener() {}
+    pause() {}
+    play() { return Promise.resolve(); }
+    cloneNode() { return new Audio(); }
+  }
   const math = Object.create(Math);
   math.random = () => random;
   const scope = { document, Audio, Math: math, performance: { now: () => 0 },
@@ -49,16 +55,18 @@ function game(width = 390, height = 844, mobile = true) {
         spikes = [{ topX: UFO_X - 102, bottomX: UFO_X - 102,
           topY: -SPIKE_HEIGHT, bottomY: HEIGHT, counted: false }]; },
       planetAtPlayer: () => { planetActive = true; currentPlanet = planetSprites[0];
-        planetX = UFO_X + 10; planetY = HEIGHT / 2; },
+        planetX = UFO_X + 10; planetY = HEIGHT / 2; planetVelocityY = 0; },
       starAtPlayer: () => { powerupActive = true; powerupX = UFO_X + 10;
         powerupY = HEIGHT / 2; powerupVelocityY = 0.8; },
       asteroidAtPlayer: () => { asteroids = [{ x: UFO_X + 10, y: HEIGHT / 2, velocityY: 1 }]; },
-      effectAtEnd: () => { invincible = true; invincibleTime = 639; },
+      effectAtEnd: () => { invincible = true; invincibleTime = invincibilityDurationFrames - 1; },
       starFar: () => { powerupActive = true; powerupX = WIDTH - 50;
         powerupY = 180; powerupVelocityY = 1; },
       read: () => ({ state, WIDTH, HEIGHT, spikeHeight: SPIKE_HEIGHT, score, credits: profile.credits,
-        invincible, invincibleTime, planetActive, planetY, powerupActive, powerupX, powerupY,
+        invincible, invincibleTime, invincibilityDurationFrames, planetActive, planetX, planetY,
+        planetVelocityY, powerupActive, powerupX, powerupY, powerupVelocityY,
         feedback: feedback.map(item => item.text), asteroids: asteroids.length,
+        asteroidItems: asteroids.map(item => ({ ...item })),
         positions: spikes.map(item => item.topX), nextStarAt, nextAsteroidAt }),
     };})();`, scope);
   return { api: scope.api, nodes, random: (value) => { random = value; },
@@ -125,13 +133,32 @@ test("Recoger planeta suma +1 con animación y conserva monedas previas", () => 
   assert.equal(g.api.read().credits, 23); // Premio otorgado una sola vez.
 });
 
-test("Estrella muestra INVENCIBLE y el efecto dura 640 frames", () => {
+test("Estrella muestra INVENCIBLE y el efecto dura lo mismo que su audio", () => {
   const g = game(); g.api.starAtPlayer(); g.api.tick();
   assert(g.api.read().invincible); assert(g.api.read().feedback.includes("INVENCIBLE"));
   assert.equal(g.api.read().powerupActive, false);
-  for (let i = 0; i < 638; i++) g.api.tick();
-  assert.equal(g.api.read().invincibleTime, 639); assert(g.api.read().invincible);
+  assert.equal(g.api.read().invincibilityDurationFrames, 160);
+  for (let i = 0; i < 158; i++) g.api.tick();
+  assert.equal(g.api.read().invincibleTime, 159); assert(g.api.read().invincible);
   g.api.tick(); assert.equal(g.api.read().invincible, false);
+});
+
+test("Planeta, estrella y asteroide nacen a la derecha y se mueven en diagonal", () => {
+  const g = game();
+  g.api.clear(); g.api.activateRandomPlanet();
+  const planetBefore = g.api.read(); assert(planetBefore.planetX > planetBefore.WIDTH);
+  g.api.tick(); const planetAfter = g.api.read();
+  assert(planetAfter.planetX < planetBefore.planetX); assert.notEqual(planetAfter.planetY, planetBefore.planetY);
+
+  g.api.clear(); g.api.activateStar();
+  const starBefore = g.api.read(); assert(starBefore.powerupX > starBefore.WIDTH);
+  g.api.tick(); const starAfter = g.api.read();
+  assert(starAfter.powerupX < starBefore.powerupX); assert.notEqual(starAfter.powerupY, starBefore.powerupY);
+
+  g.api.clear(); g.api.activateAsteroid();
+  const asteroidBefore = g.api.read().asteroidItems[0]; assert(asteroidBefore.x > g.api.read().WIDTH);
+  g.api.tick(); const asteroidAfter = g.api.read().asteroidItems[0];
+  assert(asteroidAfter.x < asteroidBefore.x); assert.notEqual(asteroidAfter.y, asteroidBefore.y);
 });
 
 test("Acabar invencibilidad no teletransporta otra estrella activa", () => {
@@ -159,6 +186,7 @@ test("Se conserva separación móvil y estado al girar la pantalla", () => {
   const g = game(); for (let i = 0; i < 149; i++) g.api.safeTick();
   assert.equal(g.api.read().positions.length, 0); g.api.safeTick();
   assert.equal(g.api.read().positions.length, 1);
+  assert(g.api.read().positions[0] > g.api.read().WIDTH);
   g.rotate(844, 390); const after = g.api.read();
   assert.equal(after.state, "playing"); assert.equal(after.credits, 22);
   assert.equal(after.HEIGHT, 600); assert.equal(after.spikeHeight, 600);
@@ -166,4 +194,5 @@ test("Se conserva separación móvil y estado al girar la pantalla", () => {
   for (let i = 0; i < 90; i++) desktop.api.safeTick();
   assert.equal(desktop.api.read().positions.length, 0); desktop.api.safeTick();
   assert.equal(desktop.api.read().positions.length, 1);
+  assert(desktop.api.read().positions[0] > desktop.api.read().WIDTH);
 });
