@@ -5,6 +5,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const source = fs.readFileSync(path.join(__dirname, "../js/game.js"), "utf8");
+const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
 const sprite = (width, height) => ({ width, height, mask: new Uint8Array(width * height).fill(1) });
 
 // Aislamos física y estado sin escribir el progreso real del navegador.
@@ -44,7 +45,7 @@ function game(width = 390, height = 844, mobile = true) {
     planetSprites = [{ imageName: "test" }];
     buildShopInterface(); resizeGame(); startGame();
     globalThis.api = {
-      resizeGame, activateRandomPlanet, activateStar, activateAsteroid, moveDiagonal,
+      resizeGame, activateRandomPlanet, activateStar, activateAsteroid, moveDiagonal, moveFlyingItem,
       opaqueOverlap, spriteRect, finishFrameAsGameOver, updateGame,
       tick: () => { ufoY = HEIGHT / 2; jumpVelocity = -GRAVITY; updateGame(); },
       safeTick: () => { ufoY = HEIGHT / 2; jumpVelocity = -GRAVITY; invincible = true;
@@ -99,6 +100,15 @@ test("Cada skin tiene variante muerta y Venezuela está en la tienda", () => {
   assert(source.includes("dead ? selectedSkin().deadImageName"));
 });
 
+test("La intro incluye marca B&Z y créditos en el orden solicitado", () => {
+  assert(html.includes('src="src/BZStudios_presenta.png"'));
+  assert(html.includes('src="src/Logo_bz.png"'));
+  const luis = html.indexOf("Luis Zabala");
+  const agustin = html.indexOf("Agustín Bustamante");
+  assert(luis >= 0 && agustin > luis);
+  assert.equal((html.match(/Creador · Desarrollador · Tester/g) || []).length, 4);
+});
+
 test("Las zonas transparentes no colisionan; los píxeles opacos sí", () => {
   const { api } = game();
   const transparent = sprite(3, 3); transparent.mask.fill(0); transparent.mask[4] = 1;
@@ -143,29 +153,57 @@ test("Estrella muestra INVENCIBLE y el efecto dura lo mismo que su audio", () =>
   g.api.tick(); assert.equal(g.api.read().invincible, false);
 });
 
-test("Planeta, estrella y asteroide nacen a la derecha y se mueven en diagonal", () => {
+test("En móvil planeta, estrella y asteroide nacen a la derecha y avanzan horizontalmente", () => {
   const g = game();
   g.api.clear(); g.api.activateRandomPlanet();
   const planetBefore = g.api.read(); assert(planetBefore.planetX > planetBefore.WIDTH);
   g.api.tick(); const planetAfter = g.api.read();
-  assert(planetAfter.planetX < planetBefore.planetX); assert.notEqual(planetAfter.planetY, planetBefore.planetY);
+  assert(planetAfter.planetX < planetBefore.planetX); assert.equal(planetAfter.planetY, planetBefore.planetY);
 
   g.api.clear(); g.api.activateStar();
   const starBefore = g.api.read(); assert(starBefore.powerupX > starBefore.WIDTH);
   g.api.tick(); const starAfter = g.api.read();
-  assert(starAfter.powerupX < starBefore.powerupX); assert.notEqual(starAfter.powerupY, starBefore.powerupY);
+  assert(starAfter.powerupX < starBefore.powerupX); assert.equal(starAfter.powerupY, starBefore.powerupY);
 
   g.api.clear(); g.api.activateAsteroid();
   const asteroidBefore = g.api.read().asteroidItems[0]; assert(asteroidBefore.x > g.api.read().WIDTH);
   g.api.tick(); const asteroidAfter = g.api.read().asteroidItems[0];
-  assert(asteroidAfter.x < asteroidBefore.x); assert.notEqual(asteroidAfter.y, asteroidBefore.y);
+  assert(asteroidAfter.x < asteroidBefore.x); assert.equal(asteroidAfter.y, asteroidBefore.y);
+});
+
+test("En escritorio planeta, estrella y asteroide mantienen movimiento diagonal", () => {
+  const g = game(1280, 720, false);
+  g.api.clear(); g.api.activateRandomPlanet();
+  const planetBefore = g.api.read(); g.api.tick(); const planetAfter = g.api.read();
+  assert.notEqual(planetAfter.planetY, planetBefore.planetY);
+  g.api.clear(); g.api.activateStar();
+  const starBefore = g.api.read(); g.api.tick(); const starAfter = g.api.read();
+  assert.notEqual(starAfter.powerupY, starBefore.powerupY);
+  g.api.clear(); g.api.activateAsteroid();
+  const asteroidBefore = g.api.read().asteroidItems[0]; g.api.tick();
+  assert.notEqual(g.api.read().asteroidItems[0].y, asteroidBefore.y);
+});
+
+test("Cada aparición móvil obtiene una altura aleatoria", () => {
+  const low = game(); low.random(0.15); low.api.clear(); low.api.activateRandomPlanet();
+  const lowPlanet = low.api.read().planetY; low.api.clear(); low.api.activateStar();
+  const lowStar = low.api.read().powerupY; low.api.clear(); low.api.activateAsteroid();
+  const lowAsteroid = low.api.read().asteroidItems[0].y;
+
+  const high = game(); high.random(0.85); high.api.clear(); high.api.activateRandomPlanet();
+  const highPlanet = high.api.read().planetY; high.api.clear(); high.api.activateStar();
+  const highStar = high.api.read().powerupY; high.api.clear(); high.api.activateAsteroid();
+  const highAsteroid = high.api.read().asteroidItems[0].y;
+  assert.notEqual(lowPlanet, highPlanet);
+  assert.notEqual(lowStar, highStar);
+  assert.notEqual(lowAsteroid, highAsteroid);
 });
 
 test("Acabar invencibilidad no teletransporta otra estrella activa", () => {
   const g = game(); g.api.effectAtEnd(); g.api.starFar();
   const before = g.api.read(); g.api.tick(); const after = g.api.read();
   assert.equal(after.powerupX, before.powerupX - 4 * before.WIDTH / 800);
-  assert.equal(after.powerupY, before.powerupY + 1);
+  assert.equal(after.powerupY, before.powerupY);
   assert(after.powerupActive); assert.equal(after.invincible, false);
 });
 

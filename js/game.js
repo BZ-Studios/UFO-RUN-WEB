@@ -65,6 +65,8 @@
     background: "src/fondo.jpg",
     background2: "src/Fondo-2.png",
     background3: "src/Fondo-3.png",
+    introPresentation: "src/BZStudios_presenta.png",
+    brandLogo: "src/Logo_bz.png",
     ufo: "src/ufo_principal.png",
     ufoGreenDead: "src/ufo_verde_muerto.png",
     ufoRed: "src/ufo_rojo.png",
@@ -131,6 +133,7 @@
   let shopMessage = "";
   let shopMessageUntil = 0;
   let lastReward = 0;
+  let introTimers = [];
 
   function loadProfile() {
     const fallback = {
@@ -210,6 +213,7 @@
   const spriteCache = new Map();
 
   const interfaceElement = document.getElementById("interface");
+  const introElement = document.getElementById("intro-screen");
   const gameHud = document.getElementById("game-hud");
   const screenElements = {
     menu: document.getElementById("menu-screen"),
@@ -241,7 +245,8 @@
   }
 
   function syncInterface() {
-    document.getElementById("toolbar").hidden = state === "loading";
+    document.getElementById("toolbar").hidden = state === "loading" || state === "intro";
+    introElement.hidden = state !== "intro";
     document.querySelector(".wallet").hidden = state === "playing";
     document.getElementById("authors-footer").hidden = state !== "gameover";
     document.getElementById("invincible-label").hidden = state !== "playing" || !invincible;
@@ -378,6 +383,32 @@
     const effect = source.cloneNode();
     effect.volume = source.volume;
     playAudio(effect);
+  }
+
+  function clearIntroTimers() {
+    introTimers.forEach((timer) => window.clearTimeout(timer));
+    introTimers = [];
+  }
+
+  function finishIntro() {
+    clearIntroTimers();
+    if (state !== "intro") return;
+    state = "menu";
+    syncInterface();
+  }
+
+  function startIntro() {
+    clearIntroTimers();
+    state = "intro";
+    introElement.dataset.phase = "studio";
+    syncInterface();
+    introTimers.push(window.setTimeout(() => {
+      if (state === "intro") introElement.dataset.phase = "credits";
+    }, 2300));
+    introTimers.push(window.setTimeout(() => {
+      if (state === "intro") introElement.dataset.phase = "outro";
+    }, 5900));
+    introTimers.push(window.setTimeout(finishIntro, 6550));
   }
 
   function stopAudio(audio, rewind = false) {
@@ -528,6 +559,10 @@
     return randomBetween(Math.max(20, min), Math.min(HEIGHT - size - 20, max));
   }
 
+  function randomScreenY(size) {
+    return randomBetween(20, HEIGHT - size - 20);
+  }
+
   function spawnFromRight(size) {
     return WIDTH + size + 24;
   }
@@ -539,7 +574,7 @@
     }
     currentPlanet = planetSprites[Math.floor(Math.random() * planetSprites.length)];
     planetX = spawnFromRight(PLANET_SIZE);
-    planetY = collectibleY(PLANET_SIZE);
+    planetY = mobileLayoutQuery.matches ? randomScreenY(PLANET_SIZE) : collectibleY(PLANET_SIZE);
     planetVelocityY = (Math.random() < 0.5 ? -1 : 1) * randomBetween(0.6, 1);
     planetActive = true;
     planetPending = false;
@@ -552,7 +587,7 @@
       return;
     }
     powerupX = spawnFromRight(POWERUP_SIZE);
-    powerupY = collectibleY(POWERUP_SIZE);
+    powerupY = mobileLayoutQuery.matches ? randomScreenY(POWERUP_SIZE) : collectibleY(POWERUP_SIZE);
     powerupVelocityY = (Math.random() < 0.5 ? -1 : 1) * randomBetween(0.6, 1);
     powerupActive = true;
     starPending = false;
@@ -576,6 +611,14 @@
       item.y = HEIGHT - size - 20;
       item.velocityY = -Math.abs(item.velocityY);
     }
+  }
+
+  function moveFlyingItem(item, size, speed) {
+    if (!mobileLayoutQuery.matches) {
+      moveDiagonal(item, size, speed);
+      return;
+    }
+    item.x -= speed * WIDTH / 800;
   }
 
   function addFeedback(text, x, y, color) {
@@ -781,7 +824,7 @@
 
     if (powerupActive) {
       const star = { x: powerupX, y: powerupY, velocityY: powerupVelocityY };
-      moveDiagonal(star, POWERUP_SIZE, POWERUP_SPEED);
+      moveFlyingItem(star, POWERUP_SIZE, POWERUP_SPEED);
       powerupX = star.x;
       powerupY = star.y;
       powerupVelocityY = star.velocityY;
@@ -801,7 +844,7 @@
     if (planetPending && !powerupActive && !planetActive && !starPending) activateRandomPlanet();
     if (planetActive) {
       const planet = { x: planetX, y: planetY, velocityY: planetVelocityY };
-      moveDiagonal(planet, PLANET_SIZE, spikeSpeed);
+      moveFlyingItem(planet, PLANET_SIZE, spikeSpeed);
       planetX = planet.x;
       planetY = planet.y;
       planetVelocityY = planet.velocityY;
@@ -816,7 +859,7 @@
     }
 
     for (const asteroid of asteroids) {
-      moveDiagonal(asteroid, ASTEROID_SIZE, POWERUP_SPEED);
+      moveFlyingItem(asteroid, ASTEROID_SIZE, POWERUP_SPEED);
       if (!invincible && opaqueOverlap(ufoRect, spriteRect(getSprite("asteroid"), asteroid.x, asteroid.y))) {
         diedThisFrame = true;
       }
@@ -934,7 +977,10 @@
     // Enter/Espacio activan el botón enfocado; Escape mantiene la navegación global.
     if ((event.code === "Space" || event.code === "Enter") &&
       event.target instanceof HTMLElement && event.target.closest("button")) return;
-    if (state === "playing" && event.code === "Space") {
+    if (state === "intro" && (event.code === "Escape" || event.code === "Enter")) {
+      event.preventDefault();
+      finishIntro();
+    } else if (state === "playing" && event.code === "Space") {
       event.preventDefault();
       jump();
     } else if (state === "playing" && event.code === "Escape") {
@@ -967,6 +1013,7 @@
     "menu-button": showMainMenu,
     "sound-button": toggleSound,
     "fullscreen-button": toggleFullscreen,
+    "skip-intro-button": finishIntro,
   })) {
     document.getElementById(id).addEventListener("click", handler);
   }
@@ -979,8 +1026,7 @@
 
   loadAssets()
     .then(() => {
-      state = "menu";
-      syncInterface();
+      startIntro();
       previousTime = performance.now();
       animationFrameId = requestAnimationFrame(frame);
     })

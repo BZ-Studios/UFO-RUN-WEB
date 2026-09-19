@@ -11,6 +11,19 @@
   </head>
   <body>
     <main class="game-shell">
+      <section id="intro-screen" class="intro-screen" aria-label="Presentación y créditos" hidden>
+        <div class="intro-panel intro-studio">
+          <img src="src/BZStudios_presenta.png" alt="B&amp;Z Studios presenta" class="intro-presentation">
+        </div>
+        <div class="intro-panel intro-credits">
+          <img src="src/Logo_bz.png" alt="B&amp;Z Studios" class="intro-brand-logo">
+          <h2>UFO RUN</h2>
+          <p class="intro-heading">Créditos</p>
+          <div class="credit-entry"><strong>Luis Zabala</strong><span>Creador · Desarrollador · Tester</span></div>
+          <div class="credit-entry"><strong>Agustín Bustamante</strong><span>Creador · Desarrollador · Tester</span></div>
+        </div>
+        <button id="skip-intro-button" class="skip-intro" type="button">Saltar intro</button>
+      </section>
       <canvas
         id="game"
         width="800"
@@ -33,7 +46,7 @@
       </header>
       <section id="interface" class="interface" aria-label="Interfaz de UFO RUN" hidden>
         <div id="menu-screen" class="screen menu-screen" hidden>
-          <div class="menu-heading"><h1>UFO <span>RUN</span></h1><p class="tagline">Vuela · Esquiva · Explora</p></div>
+          <div class="menu-heading"><h1>UFO <span>RUN</span></h1><p class="tagline">Vuela · Esquiva · Explora</p><img class="menu-brand-logo" src="src/Logo_bz.png" alt="B&amp;Z Studios"></div>
           <figure class="ship-preview"><img id="equipped-preview" src="src/ufo_principal.png" alt="Nave equipada"><figcaption id="equipped-name">Clásica</figcaption></figure>
           <div class="menu-actions"><button id="play-button" class="action primary" type="button"><span aria-hidden="true">▶</span> Jugar</button><button id="shop-button" class="action secondary" type="button">Tienda de naves</button></div>
           <div class="menu-info"><p class="instructions"><strong class="instructions-mobile">Toca para volar</strong><span class="instructions-mobile">Toca la pantalla para impulsarte</span><strong class="instructions-desktop">Espacio o clic</strong><span class="instructions-desktop">Para impulsarte</span></p><p class="record">Mejor puntaje<strong data-best-score>0</strong></p></div>
@@ -48,7 +61,7 @@
           <div class="gameover-actions"><button id="restart-button" class="action primary" type="button">Reiniciar</button><button id="menu-button" class="action secondary" type="button">Menú principal</button></div>
           <p class="final-record">Mejor puntaje <strong data-best-score>0</strong></p>
         </div>
-        <footer id="authors-footer" class="authors interface-footer" hidden>Créditos<span>Luis Zabala / Agustín Bustamante</span></footer>
+        <footer id="authors-footer" class="authors interface-footer" hidden>Créditos<span>Luis Zabala</span><small>Creador · Desarrollador · Tester</small><span>Agustín Bustamante</span><small>Creador · Desarrollador · Tester</small></footer>
       </section>
     </main>
     <noscript>UFO RUN necesita JavaScript para funcionar.</noscript>
