@@ -29,8 +29,7 @@
 
   const POWERUP_SIZE = 50;
   const POWERUP_SPEED = 4;
-  const INVINCIBILITY_FALLBACK_SECONDS = 4;
-  const COLOR_CHANGE_FREQUENCY = 120;
+  const INVINCIBILITY_FALLBACK_SECONDS = 5;
   const PLANET_SIZE = 80;
   const PLANET_OBSTACLE_INTERVAL = 3;
   const STAR_OBSTACLE_INTERVAL = 12;
@@ -39,12 +38,14 @@
 
 
   const PROFILE_STORAGE_KEY = "ufoRunProfileV1";
+  const COUNTRY_SKIN_COST = 48;
   const SKINS = [
     { id: "classic", name: "CLASICA", imageName: "ufo", deadImageName: "ufoGreenDead", cost: 0, accent: "rgb(64, 210, 122)" },
     { id: "nova", name: "NOVA ROJA", imageName: "ufoRed", deadImageName: "ufoRedDead", cost: 12, accent: "rgb(235, 74, 80)" },
     { id: "solar", name: "SOLAR", imageName: "ufoYellow", deadImageName: "ufoYellowDead", cost: 24, accent: "rgb(255, 205, 62)" },
     { id: "pulsar", name: "PULSAR AZUL", imageName: "ufoBlue", deadImageName: "ufoBlueDead", cost: 36, accent: "rgb(68, 154, 255)" },
-    { id: "venezuela", name: "VENEZUELA", imageName: "ufoVenezuela", deadImageName: "ufoVenezuelaDead", cost: 48, accent: "rgb(255, 205, 62)" },
+    { id: "venezuela", name: "VENEZUELA", imageName: "ufoVenezuela", deadImageName: "ufoVenezuelaDead", cost: COUNTRY_SKIN_COST, accent: "rgb(255, 205, 62)" },
+    { id: "argentina", name: "ARGENTINA", imageName: "ufoArgentina", deadImageName: "ufoArgentinaDead", cost: COUNTRY_SKIN_COST, accent: "rgb(107, 207, 246)" },
   ];
 
   const backgroundSources = ["src/fondo.jpg", "src/Fondo-2.png", "src/Fondo-3.png"];
@@ -77,6 +78,8 @@
     ufoBlueDead: "src/ufo_azul_muerto.png",
     ufoVenezuela: "src/ufo_venezuela.png",
     ufoVenezuelaDead: "src/ufo_venezuela_muerto.png",
+    ufoArgentina: "src/ufo_argentina.png",
+    ufoArgentinaDead: "src/ufo_argentina_muert.png",
     powerup: "src/powerup_star.png",
     spikeTop: "src/Pincho_alto.png",
     spikeBottom: "src/Pincho_bajo.png",
@@ -195,8 +198,6 @@
   let powerupActive = false;
   let powerupX = WIDTH;
   let powerupY = HEIGHT / 2;
-  let colorIndex = 0;
-  let colorChangeTime = 0;
   let planetActive = false;
   let planetPending = false;
   let nextPlanetAt = PLANET_OBSTACLE_INTERVAL;
@@ -392,9 +393,16 @@
 
   function finishIntro() {
     clearIntroTimers();
+    if (state === "intro") state = "menu";
+    syncInterface();
+  }
+
+  function revealMenuBehindIntro() {
     if (state !== "intro") return;
     state = "menu";
     syncInterface();
+    introElement.hidden = false;
+    introElement.dataset.phase = "outro";
   }
 
   function startIntro() {
@@ -405,9 +413,7 @@
     introTimers.push(window.setTimeout(() => {
       if (state === "intro") introElement.dataset.phase = "credits";
     }, 2300));
-    introTimers.push(window.setTimeout(() => {
-      if (state === "intro") introElement.dataset.phase = "outro";
-    }, 5900));
+    introTimers.push(window.setTimeout(revealMenuBehindIntro, 5900));
     introTimers.push(window.setTimeout(finishIntro, 6550));
   }
 
@@ -442,8 +448,6 @@
     powerupActive = false;
     powerupX = WIDTH;
     powerupY = HEIGHT / 2;
-    colorIndex = 0;
-    colorChangeTime = 0;
     planetActive = false;
     planetPending = false;
     nextPlanetAt = PLANET_OBSTACLE_INTERVAL;
@@ -699,8 +703,7 @@
   }
 
   function selectedUfoImageName(dead = false) {
-    return dead ? selectedSkin().deadImageName : invincible
-      ? ["ufo", "ufoRed", "ufoYellow", "ufoBlue"][colorIndex] : selectedSkin().imageName;
+    return dead ? selectedSkin().deadImageName : selectedSkin().imageName;
   }
 
   function getUfoSprite(dead = false) {
@@ -816,12 +819,6 @@
     }
     spikes = remainingSpikes;
 
-    colorChangeTime += 1;
-    if (colorChangeTime >= COLOR_CHANGE_FREQUENCY) {
-      colorIndex = (colorIndex + 1) % 4;
-      colorChangeTime = 0;
-    }
-
     if (powerupActive) {
       const star = { x: powerupX, y: powerupY, velocityY: powerupVelocityY };
       moveFlyingItem(star, POWERUP_SIZE, POWERUP_SPEED);
@@ -833,7 +830,7 @@
         invincibleTime = 0;
         syncInvincibilityDuration();
         powerupActive = false;
-        addFeedback("INVENCIBLE", UFO_X + UFO_WIDTH / 2, ufoY - 18, "#ffd648");
+        addFeedback("INVENCIBLE", UFO_X + UFO_WIDTH / 2, ufoY - 42, "#ffd648");
         playAudio(invincibilitySound, true);
       } else if (powerupX + POWERUP_SIZE < 0) {
         powerupActive = false;
@@ -921,6 +918,23 @@
     }
   }
 
+  function drawInvincibilityCountdown(sprite) {
+    const remainingFrames = Math.max(0, invincibilityDurationFrames - invincibleTime);
+    const remainingSeconds = Math.max(1, Math.ceil(remainingFrames / FPS));
+    context.save();
+    context.font = '18px "UFO Run", monospace';
+    context.textAlign = "center";
+    context.textBaseline = "bottom";
+    context.lineWidth = 4;
+    context.strokeStyle = "rgba(0,0,0,.9)";
+    context.fillStyle = "#ffd648";
+    const x = UFO_X + sprite.width / 2;
+    const y = Math.max(26, ufoY - 9);
+    context.strokeText(`${remainingSeconds}s`, x, y);
+    context.fillText(`${remainingSeconds}s`, x, y);
+    context.restore();
+  }
+
   function render() {
     if (state === "loading") return;
     drawWorld();
@@ -938,6 +952,7 @@
           sprite.width / 2 + 8, sprite.height / 2 + 8, 0, 0, Math.PI * 2);
         context.stroke();
         context.restore();
+        drawInvincibilityCountdown(sprite);
       }
     }
     if (state === "playing") {

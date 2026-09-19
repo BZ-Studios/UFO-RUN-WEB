@@ -22,7 +22,7 @@ function game(width = 390, height = 844, mobile = true) {
   }, createElement: element, querySelectorAll: () => [], querySelector: () => element(),
   body: element(), documentElement: {} };
   class Audio {
-    constructor() { this.duration = 2; }
+    constructor() { this.duration = 4.388571428571429; }
     addEventListener() {}
     pause() {}
     play() { return Promise.resolve(); }
@@ -64,7 +64,9 @@ function game(width = 390, height = 844, mobile = true) {
       starFar: () => { powerupActive = true; powerupX = WIDTH - 50;
         powerupY = 180; powerupVelocityY = 1; },
       read: () => ({ state, WIDTH, HEIGHT, spikeHeight: SPIKE_HEIGHT, score, credits: profile.credits,
-        invincible, invincibleTime, invincibilityDurationFrames, planetActive, planetX, planetY,
+        invincible, invincibleTime, invincibilityDurationFrames,
+        invincibilityCountdown: Math.max(1, Math.ceil((invincibilityDurationFrames - invincibleTime) / FPS)),
+        planetActive, planetX, planetY,
         planetVelocityY, powerupActive, powerupX, powerupY, powerupVelocityY,
         feedback: feedback.map(item => item.text), asteroids: asteroids.length,
         asteroidItems: asteroids.map(item => ({ ...item })),
@@ -87,17 +89,21 @@ test("Rutas de assets válidas y pinchos nuevos de 100x200", () => {
   }
 });
 
-test("Cada skin tiene variante muerta y Venezuela está en la tienda", () => {
+test("Cada skin tiene variante muerta y las skins de países cuestan lo mismo", () => {
   const skinBlock = source.match(/const SKINS = \[([\s\S]*?)\n  \];/)[1];
   const skins = [...skinBlock.matchAll(/imageName: "([^"]+)", deadImageName: "([^"]+)"/g)];
-  assert.equal(skins.length, 5);
+  assert.equal(skins.length, 6);
   assert(skinBlock.includes('id: "venezuela"'));
+  assert(skinBlock.includes('id: "argentina"'));
+  assert.equal((skinBlock.match(/cost: COUNTRY_SKIN_COST/g) || []).length, 2);
   for (const [, live, dead] of skins) {
     assert(source.includes(`${live}: "src/`), live);
     assert(source.includes(`${dead}: "src/`), dead);
   }
   assert(source.includes('asteroid: "src/Obstaculos/Asteroide.png"'));
   assert(source.includes("dead ? selectedSkin().deadImageName"));
+  assert(!source.includes("COLOR_CHANGE_FREQUENCY"));
+  assert(!source.includes("colorIndex"));
 });
 
 test("La intro incluye marca B&Z y créditos en el orden solicitado", () => {
@@ -107,6 +113,7 @@ test("La intro incluye marca B&Z y créditos en el orden solicitado", () => {
   const agustin = html.indexOf("Agustín Bustamante");
   assert(luis >= 0 && agustin > luis);
   assert.equal((html.match(/Creador · Desarrollador · Tester/g) || []).length, 4);
+  assert(source.includes('state = "menu";\n    syncInterface();\n    introElement.hidden = false;'));
 });
 
 test("Las zonas transparentes no colisionan; los píxeles opacos sí", () => {
@@ -147,9 +154,10 @@ test("Estrella muestra INVENCIBLE y el efecto dura lo mismo que su audio", () =>
   const g = game(); g.api.starAtPlayer(); g.api.tick();
   assert(g.api.read().invincible); assert(g.api.read().feedback.includes("INVENCIBLE"));
   assert.equal(g.api.read().powerupActive, false);
-  assert.equal(g.api.read().invincibilityDurationFrames, 160);
-  for (let i = 0; i < 158; i++) g.api.tick();
-  assert.equal(g.api.read().invincibleTime, 159); assert(g.api.read().invincible);
+  assert.equal(g.api.read().invincibilityDurationFrames, 351);
+  assert.equal(g.api.read().invincibilityCountdown, 5);
+  for (let i = 0; i < 349; i++) g.api.tick();
+  assert.equal(g.api.read().invincibleTime, 350); assert(g.api.read().invincible);
   g.api.tick(); assert.equal(g.api.read().invincible, false);
 });
 
