@@ -34,7 +34,8 @@
   const PLANET_OBSTACLE_INTERVAL = 3;
   const STAR_OBSTACLE_INTERVAL = 12;
   const ASTEROID_SIZE = 64;
-  const ASTEROID_OBSTACLE_INTERVAL = STAR_OBSTACLE_INTERVAL;
+  const ASTEROID_OBSTACLE_INTERVAL = 10;
+  const ASTEROID_IMAGE_NAMES = ["asteroid", "asteroid2"];
 
 
   const PROFILE_STORAGE_KEY = "ufoRunProfileV1";
@@ -84,6 +85,7 @@
     spikeTop: "src/Pincho_alto.png",
     spikeBottom: "src/Pincho_bajo.png",
     asteroid: "src/Obstaculos/Asteroide.png",
+    asteroid2: "src/Obstaculos/asteroide_2.png",
     planetMercury: "src/planetas/Mercurio.png",
     planetVenus: "src/planetas/Venus.png",
     planetEarth: "src/planetas/Tierra.png",
@@ -209,6 +211,7 @@
   let nextStarAt = STAR_OBSTACLE_INTERVAL;
   let starPending = false;
   let nextAsteroidAt = ASTEROID_OBSTACLE_INTERVAL / 2;
+  let nextAsteroidImageIndex = 0;
   let asteroids = [];
   let feedback = [];
   const spriteCache = new Map();
@@ -459,6 +462,7 @@
     nextStarAt = STAR_OBSTACLE_INTERVAL;
     starPending = false;
     nextAsteroidAt = ASTEROID_OBSTACLE_INTERVAL / 2;
+    nextAsteroidImageIndex = 0;
     asteroids = [];
     feedback = [];
     lastReward = 0;
@@ -598,10 +602,13 @@
   }
 
   function activateAsteroid() {
+    const imageName = ASTEROID_IMAGE_NAMES[nextAsteroidImageIndex];
+    nextAsteroidImageIndex = (nextAsteroidImageIndex + 1) % ASTEROID_IMAGE_NAMES.length;
     asteroids.push({
       x: spawnFromRight(ASTEROID_SIZE),
       y: randomBetween(40, HEIGHT - ASTEROID_SIZE - 40),
       velocityY: (Math.random() < 0.5 ? -1 : 1) * randomBetween(0.8, 1.4),
+      imageName,
     });
   }
 
@@ -662,8 +669,8 @@
         const height = Math.min(160, bodyEnd - y);
         ctx.drawImage(images[name], 0, top ? 0 : 40, 100, height, 0, y, 100, height);
       }
-    } else if (name === "asteroid") {
-      const source = images.asteroid;
+    } else if (name === "asteroid" || name === "asteroid2") {
+      const source = images[name];
       const scan = spriteSurface(source.width, source.height);
       scan.getContext("2d").drawImage(source, 0, 0);
       const data = scan.getContext("2d").getImageData(0, 0, source.width, source.height).data;
@@ -857,7 +864,7 @@
 
     for (const asteroid of asteroids) {
       moveFlyingItem(asteroid, ASTEROID_SIZE, POWERUP_SPEED);
-      if (!invincible && opaqueOverlap(ufoRect, spriteRect(getSprite("asteroid"), asteroid.x, asteroid.y))) {
+      if (!invincible && opaqueOverlap(ufoRect, spriteRect(getSprite(asteroid.imageName), asteroid.x, asteroid.y))) {
         diedThisFrame = true;
       }
     }
@@ -897,7 +904,7 @@
     drawSpikes();
     if (planetActive && currentPlanet) drawSprite(getPlanetSprite(), planetX, planetY);
     if (powerupActive) drawSprite(getSprite("powerup"), powerupX, powerupY);
-    for (const asteroid of asteroids) drawSprite(getSprite("asteroid"), asteroid.x, asteroid.y);
+    for (const asteroid of asteroids) drawSprite(getSprite(asteroid.imageName), asteroid.x, asteroid.y);
   }
 
   function drawFeedback() {

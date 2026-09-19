@@ -40,8 +40,8 @@ function game(width = 390, height = 844, mobile = true) {
   vm.runInNewContext(source.slice(0, cutoff) + `
     getUfoSprite = () => fixtureSprite(55, 38);
     getPlanetSprite = () => fixtureSprite(80, 80);
-    getSprite = (name) => fixtureSprite(name.startsWith("spike") ? 100 : name === "asteroid" ? 64 : 50,
-      name.startsWith("spike") ? SPIKE_HEIGHT : name === "asteroid" ? 64 : 50);
+    getSprite = (name) => fixtureSprite(name.startsWith("spike") ? 100 : name.startsWith("asteroid") ? 64 : 50,
+      name.startsWith("spike") ? SPIKE_HEIGHT : name.startsWith("asteroid") ? 64 : 50);
     planetSprites = [{ imageName: "test" }];
     buildShopInterface(); resizeGame(); startGame();
     globalThis.api = {
@@ -59,7 +59,8 @@ function game(width = 390, height = 844, mobile = true) {
         planetX = UFO_X + 10; planetY = HEIGHT / 2; planetVelocityY = 0; },
       starAtPlayer: () => { powerupActive = true; powerupX = UFO_X + 10;
         powerupY = HEIGHT / 2; powerupVelocityY = 0.8; },
-      asteroidAtPlayer: () => { asteroids = [{ x: UFO_X + 10, y: HEIGHT / 2, velocityY: 1 }]; },
+      asteroidAtPlayer: () => { asteroids = [{ x: UFO_X + 10, y: HEIGHT / 2,
+        velocityY: 1, imageName: "asteroid" }]; },
       effectAtEnd: () => { invincible = true; invincibleTime = invincibilityDurationFrames - 1; },
       starFar: () => { powerupActive = true; powerupX = WIDTH - 50;
         powerupY = 180; powerupVelocityY = 1; },
@@ -132,14 +133,21 @@ test("Los planetas aparecen antes y varían su altura", () => {
   assert.notEqual(g.api.read().planetY, first);
 });
 
-test("Estrella cada 12 obstáculos, asteroide cada 12 desfasado 6", () => {
+test("Estrella cada 12 obstáculos y asteroide cada 10 desfasado 5", () => {
   const g = game();
   g.api.passed(4); g.api.tick(); assert.equal(g.api.read().powerupActive, false);
-  g.api.clear(); g.api.passed(6); g.api.tick(); assert.equal(g.api.read().asteroids, 1);
+  g.api.clear(); g.api.passed(5); g.api.tick(); assert.equal(g.api.read().asteroids, 1);
   g.api.clear(); g.api.passed(12); g.api.tick(); assert.equal(g.api.read().powerupActive, true);
   assert.equal(g.api.read().nextStarAt, 24);
-  g.api.clear(); g.api.passed(18); g.api.tick(); assert.equal(g.api.read().asteroids, 1);
-  assert.equal(g.api.read().nextAsteroidAt, 30);
+  g.api.clear(); g.api.passed(15); g.api.tick(); assert.equal(g.api.read().asteroids, 1);
+  assert.equal(g.api.read().nextAsteroidAt, 25);
+});
+
+test("Los dos asteroides se intercalan en cada aparición", () => {
+  const g = game();
+  g.api.clear(); g.api.activateAsteroid(); g.api.activateAsteroid(); g.api.activateAsteroid();
+  assert.equal(g.api.read().asteroidItems.map((item) => item.imageName).join(","),
+    "asteroid,asteroid2,asteroid");
 });
 
 test("Recoger planeta suma +1 con animación y conserva monedas previas", () => {
