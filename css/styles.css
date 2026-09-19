@@ -85,10 +85,18 @@ h2 { font-size: clamp(26px,4vw,44px); line-height: 1.2; }
 .skin-card button { min-height: 44px; border: 2px solid var(--border); border-radius: 9px; background: rgba(8,17,42,.9); font-size: 14px; color: #ffd648; padding: 8px; }
 .skin-card.owned button { color: var(--skin-accent); }
 .skin-card button:disabled { cursor: default; opacity: 1; }
+.reward-card { border-color: rgba(255,214,72,.75); }
+.reward-card h3 { color: #ffd648; }
+.reward-video-icon { grid-column: 1; grid-row: 2 / 4; display: grid; place-items: center; justify-self: center; width: 76px; aspect-ratio: 1; border: 3px solid #ffd648; border-radius: 50%; color: #ffd648; font-size: 30px; padding-left: 5px; box-shadow: 0 0 18px rgba(255,214,72,.28); }
+.reward-card button { border-color: #ffd648; background: rgba(75,50,5,.72); }
+.reward-card button:disabled, .rewarded-action:disabled { cursor: default; filter: grayscale(.7); opacity: .58; }
 .shop-status { min-height: 32px; margin-top: 22px; text-align: center; font-size: 12px; line-height: 1.6; color: #ffd648; }
 .gameover-screen { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 24px; max-width: 700px; }
 .final-score { font-size: 26px; color: var(--cyan); }
 .run-reward { color: #ffd648; font-size: 14px; }
+.continue-offer { display: flex; flex-direction: column; gap: 8px; width: min(100%,480px); }
+.rewarded-action { min-height: 68px; border-color: #ffd648; background: linear-gradient(135deg,rgba(156,93,6,.96),rgba(88,41,118,.96)); color: #fff5bd; box-shadow: 0 0 22px rgba(255,214,72,.28); }
+.continue-offer p { color: #ffd648; font-size: 10px; line-height: 1.5; }
 .gameover-actions { width: min(100%,400px); margin: 8px 0; }
 .final-record { font-size: 13px; color: #a1b8e4; }
 .authors { font-size: 11px; color: #708cc0; line-height: 1.8; }
@@ -122,6 +130,7 @@ noscript { position: fixed; color: #fff; font-family: sans-serif; }
   .skin-card img { width: 90px; max-width: 90%; }
   .skin-card p { font-size: 8px; }
   .skin-card button { width: 100%; font-size: 12px; }
+  .reward-video-icon { width: 66px; font-size: 25px; }
   .gameover-screen h2 { font-size: clamp(23px,7vw,36px); }
   .authors span { font-size: 9px; }
 }
@@ -155,6 +164,7 @@ noscript { position: fixed; color: #fff; font-family: sans-serif; }
   .skin-card img { width: 80px; }
   .skin-card p { font-size: 8px; }
   .skin-card button { width: 100%; font-size: 11px; }
+  .reward-video-icon { width: 58px; font-size: 22px; }
   .shop-status { margin-top: 10px; font-size: 10px; min-height: 20px; }
   .gameover-screen { gap: 10px; }
   .gameover-screen h2 { font-size: 28px; }
@@ -162,6 +172,9 @@ noscript { position: fixed; color: #fff; font-family: sans-serif; }
   .run-reward, .final-record { font-size: 11px; }
   .gameover-actions { flex-direction: row; width: min(100%,600px); gap: 12px; margin: 5px 0; }
   .gameover-actions .action { font-size: 16px; }
+  .continue-offer { width: min(100%,440px); gap: 4px; }
+  .continue-offer .action { min-height: 46px; padding: 8px 14px; font-size: 15px; }
+  .continue-offer p { font-size: 8px; }
   .authors { font-size: 9px; }
 }
 @media (max-width: 360px) {

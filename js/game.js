@@ -29,6 +29,7 @@
 
   const POWERUP_SIZE = 50;
   const POWERUP_SPEED = 4;
+  const ASTEROID_SPEED = POWERUP_SPEED * 2;
   const INVINCIBILITY_FALLBACK_SECONDS = 5;
   const PLANET_SIZE = 80;
   const PLANET_OBSTACLE_INTERVAL = 3;
@@ -36,6 +37,8 @@
   const ASTEROID_SIZE = 64;
   const ASTEROID_OBSTACLE_INTERVAL = 10;
   const ASTEROID_IMAGE_NAMES = ["asteroid", "asteroid2"];
+  const COIN_AD_REWARD = 50;
+  const DAILY_COIN_AD_LIMIT = 10;
 
 
   const PROFILE_STORAGE_KEY = "ufoRunProfileV1";
@@ -138,7 +141,18 @@
   let shopMessage = "";
   let shopMessageUntil = 0;
   let lastReward = 0;
+  let creditedScore = 0;
+  let continueUsed = false;
+  let continueAdMessage = "Revive una vez en esta partida";
+  let adRequestPending = false;
   let introTimers = [];
+
+  function localDayKey(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
 
   function loadProfile() {
     const fallback = {
@@ -147,6 +161,8 @@
       ownedSkins: ["classic"],
       selectedSkin: "classic",
       soundEnabled: true,
+      coinAdDay: localDayKey(),
+      coinAdsToday: 0,
     };
 
     try {
@@ -167,6 +183,9 @@
         ownedSkins,
         selectedSkin,
         soundEnabled: stored.soundEnabled !== false,
+        coinAdDay: typeof stored.coinAdDay === "string" ? stored.coinAdDay : localDayKey(),
+        coinAdsToday: Math.max(0, Math.min(DAILY_COIN_AD_LIMIT,
+          Math.trunc(Number(stored.coinAdsToday) || 0))),
       };
     } catch (_error) {
       return fallback;
@@ -181,6 +200,14 @@
     } catch (_error) {
       // El juego sigue funcionando si el navegador bloquea el almacenamiento local.
     }
+  }
+
+  function refreshDailyAdCounter() {
+    const today = localDayKey();
+    if (profile.coinAdDay === today) return;
+    profile.coinAdDay = today;
+    profile.coinAdsToday = 0;
+    saveProfile();
   }
 
   function selectedSkin() {
@@ -249,6 +276,7 @@
   }
 
   function syncInterface() {
+    refreshDailyAdCounter();
     document.getElementById("toolbar").hidden = state === "loading" || state === "intro";
     introElement.hidden = state !== "intro";
     document.querySelector(".wallet").hidden = state === "playing";
@@ -282,6 +310,20 @@
     document.getElementById("run-reward").textContent = `+${lastReward} monedas guardadas`;
     document.getElementById("shop-status").textContent = shopMessage && performance.now() < shopMessageUntil
       ? shopMessage : "Gana monedas superando obstáculos";
+    const coinAdsRemaining = Math.max(0, DAILY_COIN_AD_LIMIT - profile.coinAdsToday);
+    const coinAdButton = document.getElementById("coin-ad-button");
+    coinAdButton.textContent = adRequestPending && state === "shop"
+      ? "Cargando anuncio..." : coinAdsRemaining > 0 ? `Ver anuncio +${COIN_AD_REWARD}` : "Límite diario alcanzado";
+    coinAdButton.disabled = adRequestPending || coinAdsRemaining === 0;
+    document.getElementById("coin-ad-remaining").textContent = coinAdsRemaining === 1
+      ? "1 anuncio disponible hoy" : `${coinAdsRemaining} anuncios disponibles hoy`;
+    const continueAdButton = document.getElementById("continue-ad-button");
+    continueAdButton.hidden = continueUsed;
+    continueAdButton.disabled = adRequestPending;
+    continueAdButton.innerHTML = adRequestPending && state === "gameover"
+      ? "Cargando anuncio..." : '<span aria-hidden="true">▶</span> Ver video y continuar';
+    document.getElementById("continue-ad-status").textContent = continueUsed
+      ? "Continuación utilizada en esta partida" : continueAdMessage;
     for (const skin of SKINS) {
       const elements = skinCards.get(skin.id);
       const owned = profile.ownedSkins.includes(skin.id);
@@ -445,6 +487,7 @@
     spikeSpeed = INITIAL_SPIKE_SPEED;
     spikes = [];
     score = 0;
+    creditedScore = 0;
     passedObstacles = 0;
     invincible = false;
     invincibleTime = 0;
@@ -466,6 +509,9 @@
     asteroids = [];
     feedback = [];
     lastReward = 0;
+    continueUsed = false;
+    continueAdMessage = "Revive una vez en esta partida";
+    adRequestPending = false;
     shopMessage = "";
     accumulator = 0;
     state = "playing";
@@ -535,6 +581,78 @@
     saveProfile();
     syncInterface();
     window.setTimeout(syncInterface, 1850);
+  }
+
+  async function requestRewardedAd(placement) {
+    if (typeof window.ufoRunShowRewardedAd !== "function") return false;
+    try {
+      return await window.ufoRunShowRewardedAd({ placement }) === true;
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  async function handleCoinAd() {
+    if (state !== "shop" || adRequestPending) return;
+    refreshDailyAdCounter();
+    if (profile.coinAdsToday >= DAILY_COIN_AD_LIMIT) {
+      shopMessage = "LÍMITE DIARIO ALCANZADO";
+      shopMessageUntil = performance.now() + 2200;
+      syncInterface();
+      return;
+    }
+
+    adRequestPending = true;
+    shopMessage = "CARGANDO ANUNCIO";
+    shopMessageUntil = Number.POSITIVE_INFINITY;
+    syncInterface();
+    const completed = await requestRewardedAd("shop-coins");
+    adRequestPending = false;
+    if (completed) {
+      profile.credits += COIN_AD_REWARD;
+      profile.coinAdsToday += 1;
+      shopMessage = `+${COIN_AD_REWARD} MONEDAS`;
+      saveProfile();
+    } else {
+      shopMessage = "ANUNCIO NO DISPONIBLE";
+    }
+    shopMessageUntil = performance.now() + 2400;
+    syncInterface();
+    window.setTimeout(syncInterface, 2450);
+  }
+
+  function reviveAfterAd() {
+    continueUsed = true;
+    continueAdMessage = "Continuación utilizada en esta partida";
+    ufoY = HEIGHT / 2 - UFO_HEIGHT / 2;
+    jumpVelocity = 0;
+    const safeRight = UFO_X + UFO_WIDTH + SPIKE_WIDTH;
+    spikes = spikes.filter((spike) => spike.topX > safeRight);
+    asteroids = asteroids.filter((asteroid) => asteroid.x > safeRight);
+    invincible = true;
+    invincibleTime = 0;
+    syncInvincibilityDuration();
+    state = "playing";
+    accumulator = 0;
+    syncInterface();
+    playAudio(backgroundMusic, true);
+    playAudio(invincibilitySound, true);
+    canvas.focus({ preventScroll: true });
+  }
+
+  async function handleContinueAd() {
+    if (state !== "gameover" || continueUsed || adRequestPending) return;
+    adRequestPending = true;
+    continueAdMessage = "Cargando anuncio...";
+    syncInterface();
+    const completed = await requestRewardedAd("continue");
+    adRequestPending = false;
+    if (completed) {
+      reviveAfterAd();
+      return;
+    }
+    continueAdMessage = "Anuncio no disponible. Inténtalo de nuevo.";
+    syncInterface();
   }
 
   function jump() {
@@ -763,11 +881,14 @@
 
   function finishFrameAsGameOver() {
     if (state !== "playing") return;
-    lastReward = Math.max(0, score);
+    lastReward = Math.max(0, score - creditedScore);
     profile.credits += lastReward;
+    creditedScore += lastReward;
     profile.bestScore = Math.max(profile.bestScore, score);
     saveProfile();
     state = "gameover";
+    continueAdMessage = continueUsed
+      ? "Continuación utilizada en esta partida" : "Revive una vez en esta partida";
     syncInterface();
     accumulator = 0;
     stopAudio(backgroundMusic);
@@ -863,7 +984,7 @@
     }
 
     for (const asteroid of asteroids) {
-      moveFlyingItem(asteroid, ASTEROID_SIZE, POWERUP_SPEED);
+      moveFlyingItem(asteroid, ASTEROID_SIZE, ASTEROID_SPEED);
       if (!invincible && opaqueOverlap(ufoRect, spriteRect(getSprite(asteroid.imageName), asteroid.x, asteroid.y))) {
         diedThisFrame = true;
       }
@@ -1033,6 +1154,8 @@
     "shop-button": showShop,
     "back-button": showMainMenu,
     "menu-button": showMainMenu,
+    "coin-ad-button": handleCoinAd,
+    "continue-ad-button": handleContinueAd,
     "sound-button": toggleSound,
     "fullscreen-button": toggleFullscreen,
     "skip-intro-button": finishIntro,

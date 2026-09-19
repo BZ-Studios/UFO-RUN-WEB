@@ -55,10 +55,20 @@
         </div>
         <div id="shop-screen" class="screen shop-screen" hidden>
           <div class="section-heading"><h2>Hangar</h2><p>Elige tu nave</p></div>
-          <div id="shop-grid" class="shop-grid"></div><p id="shop-status" class="shop-status" role="status">Gana monedas superando obstáculos</p>
+          <div id="shop-grid" class="shop-grid">
+            <article class="skin-card reward-card">
+              <h3>50 monedas</h3><span class="reward-video-icon" aria-hidden="true">▶</span>
+              <p id="coin-ad-remaining">10 anuncios disponibles hoy</p>
+              <button id="coin-ad-button" type="button">Ver anuncio +50</button>
+            </article>
+          </div><p id="shop-status" class="shop-status" role="status">Gana monedas superando obstáculos</p>
         </div>
         <div id="gameover-screen" class="screen gameover-screen" hidden>
           <h2>Misión terminada</h2><p class="final-score">Puntaje <strong id="final-score">0</strong></p><p id="run-reward" class="run-reward">+0 monedas guardadas</p>
+          <div class="continue-offer">
+            <button id="continue-ad-button" class="action rewarded-action" type="button"><span aria-hidden="true">▶</span> Ver video y continuar</button>
+            <p id="continue-ad-status" role="status">Revive una vez en esta partida</p>
+          </div>
           <div class="gameover-actions"><button id="restart-button" class="action primary" type="button">Reiniciar</button><button id="menu-button" class="action secondary" type="button">Menú principal</button></div>
           <p class="final-record">Mejor puntaje <strong data-best-score>0</strong></p>
         </div>

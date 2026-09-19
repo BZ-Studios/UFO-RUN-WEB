@@ -12,6 +12,8 @@ const sprite = (width, height) => ({ width, height, mask: new Uint8Array(width *
 // Las colisiones de transparencia se prueban con máscaras explícitas más abajo.
 function game(width = 390, height = 844, mobile = true) {
   let random = 0.2;
+  let rewardedAdResult = true;
+  const rewardedAdCalls = [];
   const nodes = new Map();
   const element = () => ({ hidden: true, textContent: "", style: { setProperty() {} },
     classList: { toggle() {} }, setAttribute() {}, addEventListener() {}, append() {}, focus() {},
@@ -30,8 +32,11 @@ function game(width = 390, height = 844, mobile = true) {
   }
   const math = Object.create(Math);
   math.random = () => random;
-  const scope = { document, Audio, Math: math, performance: { now: () => 0 },
-    window: { devicePixelRatio: 1, matchMedia: () => ({ matches: mobile }), setTimeout() {} },
+  const browserWindow = { devicePixelRatio: 1, matchMedia: () => ({ matches: mobile }), setTimeout() {},
+    ufoRunShowRewardedAd: async ({ placement }) => {
+      rewardedAdCalls.push(placement); return rewardedAdResult;
+    } };
+  const scope = { document, Audio, Math: math, performance: { now: () => 0 }, window: browserWindow,
     localStorage: { getItem: () => JSON.stringify({ credits: 22, bestScore: 16,
       ownedSkins: ["classic"], selectedSkin: "classic" }), setItem() {} },
     fixtureSprite: sprite };
@@ -46,6 +51,7 @@ function game(width = 390, height = 844, mobile = true) {
     buildShopInterface(); resizeGame(); startGame();
     globalThis.api = {
       resizeGame, activateRandomPlanet, activateStar, activateAsteroid, moveDiagonal, moveFlyingItem,
+      showShop, handleCoinAd, handleContinueAd,
       opaqueOverlap, spriteRect, finishFrameAsGameOver, updateGame,
       tick: () => { ufoY = HEIGHT / 2; jumpVelocity = -GRAVITY; updateGame(); },
       safeTick: () => { ufoY = HEIGHT / 2; jumpVelocity = -GRAVITY; invincible = true;
@@ -61,19 +67,22 @@ function game(width = 390, height = 844, mobile = true) {
         powerupY = HEIGHT / 2; powerupVelocityY = 0.8; },
       asteroidAtPlayer: () => { asteroids = [{ x: UFO_X + 10, y: HEIGHT / 2,
         velocityY: 1, imageName: "asteroid" }]; },
+      endShield: () => { invincible = false; invincibleTime = 0; },
       effectAtEnd: () => { invincible = true; invincibleTime = invincibilityDurationFrames - 1; },
       starFar: () => { powerupActive = true; powerupX = WIDTH - 50;
         powerupY = 180; powerupVelocityY = 1; },
       read: () => ({ state, WIDTH, HEIGHT, spikeHeight: SPIKE_HEIGHT, score, credits: profile.credits,
-        invincible, invincibleTime, invincibilityDurationFrames,
+        invincible, invincibleTime, invincibilityDurationFrames, continueUsed,
         invincibilityCountdown: Math.max(1, Math.ceil((invincibilityDurationFrames - invincibleTime) / FPS)),
         planetActive, planetX, planetY,
         planetVelocityY, powerupActive, powerupX, powerupY, powerupVelocityY,
         feedback: feedback.map(item => item.text), asteroids: asteroids.length,
         asteroidItems: asteroids.map(item => ({ ...item })),
-        positions: spikes.map(item => item.topX), nextStarAt, nextAsteroidAt }),
+        positions: spikes.map(item => item.topX), nextStarAt, nextAsteroidAt,
+        coinAdsToday: profile.coinAdsToday }),
     };})();`, scope);
   return { api: scope.api, nodes, random: (value) => { random = value; },
+    adResult: (value) => { rewardedAdResult = value; }, adCalls: rewardedAdCalls,
     rotate: (w, h) => { width = w; height = h; scope.api.resizeGame(); } };
 }
 
@@ -185,6 +194,36 @@ test("En móvil planeta, estrella y asteroide nacen a la derecha y avanzan horiz
   const asteroidBefore = g.api.read().asteroidItems[0]; assert(asteroidBefore.x > g.api.read().WIDTH);
   g.api.tick(); const asteroidAfter = g.api.read().asteroidItems[0];
   assert(asteroidAfter.x < asteroidBefore.x); assert.equal(asteroidAfter.y, asteroidBefore.y);
+  assert.equal(asteroidBefore.x - asteroidAfter.x, 8 * g.api.read().WIDTH / 800);
+});
+
+test("La tienda entrega 50 monedas por anuncio y respeta el máximo diario de 10", async () => {
+  const g = game(); g.api.showShop();
+  for (let index = 0; index < 11; index += 1) await g.api.handleCoinAd();
+  assert.equal(g.api.read().credits, 522);
+  assert.equal(g.api.read().coinAdsToday, 10);
+  assert.equal(g.adCalls.length, 10);
+  assert.equal(g.nodes.get("coin-ad-button").disabled, true);
+});
+
+test("Un anuncio no completado no concede monedas", async () => {
+  const g = game(); g.api.showShop(); g.adResult(false);
+  await g.api.handleCoinAd();
+  assert.equal(g.api.read().credits, 22);
+  assert.equal(g.api.read().coinAdsToday, 0);
+});
+
+test("El anuncio permite continuar una vez y no duplica monedas ya guardadas", async () => {
+  const g = game();
+  g.api.planetAtPlayer(); g.api.tick();
+  g.api.asteroidAtPlayer(); g.api.tick();
+  assert.equal(g.api.read().state, "gameover"); assert.equal(g.api.read().credits, 23);
+  await g.api.handleContinueAd();
+  assert.equal(g.api.read().state, "playing"); assert.equal(g.api.read().continueUsed, true);
+  assert.equal(g.api.read().invincible, true); assert.equal(g.adCalls.at(-1), "continue");
+  g.api.planetAtPlayer(); g.api.tick();
+  g.api.endShield(); g.api.asteroidAtPlayer(); g.api.tick();
+  assert.equal(g.api.read().state, "gameover"); assert.equal(g.api.read().credits, 24);
 });
 
 test("En escritorio planeta, estrella y asteroide mantienen movimiento diagonal", () => {
