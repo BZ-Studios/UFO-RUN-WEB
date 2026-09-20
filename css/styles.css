@@ -51,11 +51,19 @@ h1 { font-size: clamp(52px,7vw,94px); line-height: 1.05; letter-spacing: .05em; 
 h1 span { display: block; color: var(--cyan); }
 .tagline { color: #a1b8e4; font-size: clamp(11px,1.4vw,16px); margin-top: 14px; }
 .menu-brand-logo { position: absolute; z-index: 2; top: max(14px,env(safe-area-inset-top)); left: max(20px,env(safe-area-inset-left)); display: block; width: clamp(82px,8vw,116px); height: auto; object-fit: contain; }
-.ship-preview { grid-column: 2; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+.ship-preview { grid-column: 2; grid-row: 1 / 4; display: flex; flex-direction: column; align-items: center; gap: 20px; }
 .ship-preview img { width: clamp(130px,18vw,210px); height: auto; image-rendering: pixelated; filter: drop-shadow(0 0 18px rgba(80,220,255,.65)); animation: hover-ship 2.8s ease-in-out infinite; }
 .ship-preview figcaption { color: #40d27a; font-size: 16px; }
 .menu-actions, .gameover-actions { display: flex; flex-direction: column; gap: 12px; }
-.menu-actions { grid-column: 1; grid-row: 2; width: min(100%,480px); }
+.difficulty-selector { grid-column: 1; grid-row: 2; display: flex; flex-direction: column; gap: 8px; width: min(100%,480px); }
+.difficulty-selector > p { color: #dce8ff; font-size: 11px; letter-spacing: .15em; text-transform: uppercase; }
+.difficulty-options { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; }
+.difficulty-options button, .ranking-tabs button { min-height: 38px; padding: 7px; border: 2px solid var(--border); border-radius: 18px; background: rgba(7,14,34,.92); color: #9eb2d7; font-size: 11px; }
+.difficulty-options button[aria-checked="true"], .ranking-tabs button[aria-selected="true"] { border-color: #ffd648; background: #ffd648; color: #101522; box-shadow: 0 0 14px rgba(255,214,72,.3); }
+#difficulty-description { min-height: 14px; color: #8fa6d2; font-size: 9px; line-height: 1.5; }
+.menu-actions { grid-column: 1; grid-row: 3; width: min(100%,480px); gap: 8px; }
+.menu-actions .action { min-height: 50px; font-size: clamp(15px,1.8vw,22px); }
+.menu-actions .primary { min-height: 60px; }
 .action { display: flex; align-items: center; justify-content: center; gap: 22px; width: 100%; min-height: 60px; padding: 14px 18px; border: 2px solid var(--border); border-radius: 12px; box-shadow: 0 0 18px rgba(25,90,255,.25); font-size: clamp(17px,2.2vw,26px); }
 .primary { background: rgba(7,112,68,.97); border-color: var(--cyan); }
 .secondary { background: var(--panel); color: var(--purple); }
@@ -91,6 +99,30 @@ h2 { font-size: clamp(26px,4vw,44px); line-height: 1.2; }
 .reward-card button { border-color: #ffd648; background: rgba(75,50,5,.72); }
 .reward-card button:disabled, .rewarded-action:disabled { cursor: default; filter: grayscale(.7); opacity: .58; }
 .shop-status { min-height: 32px; margin-top: 22px; text-align: center; font-size: 12px; line-height: 1.6; color: #ffd648; }
+.help-screen, .ranking-screen { max-width: 940px; }
+.help-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.help-card { display: grid; grid-template-columns: 110px minmax(0,1fr); align-items: center; gap: 16px; min-height: 150px; padding: 16px; border: 2px solid var(--border); border-radius: 12px; background: var(--panel); }
+.help-card > img { width: 100px; height: 100px; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 0 10px rgba(80,220,255,.35)); }
+.help-card h3 { margin: 0 0 10px; color: var(--cyan); font-size: 15px; }
+.help-card p { color: #a7badf; font-size: 10px; line-height: 1.65; }
+.help-spikes, .help-asteroids { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.help-spikes img { width: 44px; height: 106px; object-fit: cover; image-rendering: pixelated; }
+.help-asteroids img { width: 52px; height: 52px; object-fit: contain; }
+.help-boundaries { display: flex; flex-direction: column; align-items: center; justify-content: space-between; width: 100px; height: 100px; padding: 8px 0; color: #eef7ff; font-size: 10px; }
+.help-boundaries span { display: block; width: 100%; border-top: 5px solid #ff5b69; box-shadow: 0 0 8px rgba(255,91,105,.55); }
+.ranking-panel { width: min(100%,720px); margin: auto; padding: clamp(18px,3vw,32px); border: 2px solid var(--border); border-radius: 18px; background: rgba(7,14,34,.96); box-shadow: 0 0 30px rgba(25,90,255,.25); }
+.pilot-name { display: grid; grid-template-columns: auto minmax(150px,280px); align-items: center; justify-content: center; gap: 14px; margin-bottom: 18px; color: #9eb2d7; font-size: 10px; }
+.pilot-name input { width: 100%; min-height: 40px; border: 2px solid var(--border); border-radius: 9px; background: #050b1d; padding: 8px 12px; color: #fff; font: inherit; text-transform: uppercase; }
+.pilot-name input:focus { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.ranking-tabs { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 16px; }
+.ranking-table-wrap { overflow-x: auto; }
+.ranking-panel table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.ranking-panel th, .ranking-panel td { padding: 10px 8px; border-bottom: 1px solid rgba(91,119,207,.25); text-align: left; }
+.ranking-panel th:first-child, .ranking-panel td:first-child { width: 48px; text-align: center; }
+.ranking-panel th:last-child, .ranking-panel td:last-child { text-align: right; }
+.ranking-panel th { color: #8ea5d1; font-size: 9px; text-transform: uppercase; }
+.ranking-panel td:last-child { color: #55e58f; }
+.ranking-empty { color: #7188b6 !important; text-align: center !important; }
 .gameover-screen { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 24px; max-width: 700px; }
 .final-score { font-size: 26px; color: var(--cyan); }
 .run-reward { color: #ffd648; font-size: 14px; }
@@ -110,7 +142,7 @@ noscript { position: fixed; color: #fff; font-family: sans-serif; }
 @media (orientation: portrait) and (max-width: 700px) {
   .screen { max-width: 470px; padding: 20px 0; }
   .menu-screen { grid-template-columns: 1fr; gap: clamp(14px,2.5dvh,28px); text-align: center; max-width: 470px; margin: auto; }
-  .menu-heading, .ship-preview, .menu-actions, .menu-info, .menu-footnote { grid-column: 1; grid-row: auto; }
+  .menu-heading, .ship-preview, .difficulty-selector, .menu-actions, .menu-info, .menu-footnote { grid-column: 1; grid-row: auto; }
   h1 { font-size: clamp(48px,15vw,78px); }
   h1 span { display: inline; }
   .tagline { font-size: clamp(10px,2.8vw,14px); margin-top: 12px; }
@@ -119,6 +151,8 @@ noscript { position: fixed; color: #fff; font-family: sans-serif; }
   .ship-preview img { width: clamp(110px,32vw,165px); }
   .ship-preview figcaption { font-size: 13px; }
   .action { min-height: 56px; font-size: clamp(16px,4.6vw,23px); }
+  .difficulty-selector { margin: auto; }
+  .difficulty-options button { font-size: 10px; }
   .menu-info { grid-template-columns: 1fr; gap: 16px; }
   .instructions { padding: 12px; font-size: 13px; gap: 6px; }
   .record { flex-direction: row; justify-content: center; gap: 18px; }
@@ -131,6 +165,11 @@ noscript { position: fixed; color: #fff; font-family: sans-serif; }
   .skin-card p { font-size: 8px; }
   .skin-card button { width: 100%; font-size: 12px; }
   .reward-video-icon { width: 66px; font-size: 25px; }
+  .help-grid { grid-template-columns: 1fr; }
+  .help-card { grid-template-columns: 86px minmax(0,1fr); min-height: 120px; padding: 12px; }
+  .help-card > img, .help-boundaries { width: 78px; height: 78px; }
+  .help-spikes img { width: 34px; height: 82px; }
+  .pilot-name { grid-template-columns: 1fr; text-align: center; }
   .gameover-screen h2 { font-size: clamp(23px,7vw,36px); }
   .authors span { font-size: 9px; }
 }
@@ -149,6 +188,9 @@ noscript { position: fixed; color: #fff; font-family: sans-serif; }
   .ship-preview figcaption { font-size: 11px; }
   .action { min-height: 44px; padding: 8px 14px; font-size: 17px; }
   .menu-actions { gap: 8px; }
+  .difficulty-selector { gap: 4px; }
+  .difficulty-options button { min-height: 30px; padding: 4px; font-size: 9px; }
+  #difficulty-description { font-size: 8px; }
   .menu-info { gap: 32px; }
   .instructions { padding: 9px 12px; gap: 4px; font-size: 11px; }
   .instructions span { font-size: 9px; }
@@ -165,6 +207,20 @@ noscript { position: fixed; color: #fff; font-family: sans-serif; }
   .skin-card p { font-size: 8px; }
   .skin-card button { width: 100%; font-size: 11px; }
   .reward-video-icon { width: 58px; font-size: 22px; }
+  .help-grid { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+  .help-card { display: flex; flex-direction: column; min-height: 190px; padding: 9px; gap: 7px; text-align: center; }
+  .help-card > img, .help-boundaries { width: 58px; height: 58px; }
+  .help-spikes img { width: 26px; height: 64px; }
+  .help-asteroids img { width: 38px; height: 38px; }
+  .help-card h3 { margin-bottom: 5px; font-size: 10px; }
+  .help-card p { font-size: 7px; line-height: 1.4; }
+  .ranking-panel { padding: 12px 18px; }
+  .ranking-panel .section-heading { margin-bottom: 8px; }
+  .pilot-name { grid-template-columns: auto 220px; margin-bottom: 8px; }
+  .pilot-name input { min-height: 32px; }
+  .ranking-tabs { margin-bottom: 8px; }
+  .ranking-tabs button { min-height: 30px; padding: 4px; font-size: 9px; }
+  .ranking-panel th, .ranking-panel td { padding: 5px 8px; font-size: 9px; }
   .shop-status { margin-top: 10px; font-size: 10px; min-height: 20px; }
   .gameover-screen { gap: 10px; }
   .gameover-screen h2 { font-size: 28px; }
@@ -197,8 +253,12 @@ noscript { position: fixed; color: #fff; font-family: sans-serif; }
   .shop-screen { padding: 8px 0; }
 }
 @media (min-width: 701px) and (min-height: 551px) {
-  .menu-info { position: absolute; left: max(20px,env(safe-area-inset-left)); right: max(20px,env(safe-area-inset-right)); bottom: max(60px,calc(env(safe-area-inset-bottom) + 44px)); grid-template-columns: minmax(250px,480px) 1fr; }
-  .menu-info .record { justify-self: end; }
-  .menu-footnote { position: absolute; bottom: max(16px,env(safe-area-inset-bottom)); left: 20px; right: 20px; }
-  .menu-screen { padding-bottom: 130px; }
+  .menu-screen { padding-top: 8px; padding-bottom: 16px; }
+  .menu-screen h1 { font-size: clamp(52px,6vw,78px); }
+  .ship-preview { grid-row: 1 / 3; }
+  .menu-actions .action { min-height: 46px; }
+  .menu-actions .primary { min-height: 54px; }
+  .menu-info { grid-column: 2; grid-row: 3; grid-template-columns: 1fr; gap: 12px; align-self: start; }
+  .menu-info .instructions, .menu-info .record { width: min(100%,360px); justify-self: center; }
+  .menu-footnote { grid-column: 1 / -1; grid-row: 4; }
 }

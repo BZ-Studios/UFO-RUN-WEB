@@ -15,8 +15,8 @@ function game(width = 390, height = 844, mobile = true) {
   let rewardedAdResult = true;
   const rewardedAdCalls = [];
   const nodes = new Map();
-  const element = () => ({ hidden: true, textContent: "", style: { setProperty() {} },
-    classList: { toggle() {} }, setAttribute() {}, addEventListener() {}, append() {}, focus() {},
+  const element = () => ({ hidden: true, textContent: "", value: "", dataset: {}, style: { setProperty() {} },
+    classList: { toggle() {} }, setAttribute() {}, addEventListener() {}, append() {}, replaceChildren() {}, focus() {},
     getBoundingClientRect: () => ({ width, height }), getContext: () => ({ setTransform() {} }) });
   const document = { getElementById: (id) => {
     if (!nodes.has(id)) nodes.set(id, element());
@@ -24,15 +24,17 @@ function game(width = 390, height = 844, mobile = true) {
   }, createElement: element, querySelectorAll: () => [], querySelector: () => element(),
   body: element(), documentElement: {} };
   class Audio {
-    constructor() { this.duration = 4.388571428571429; }
+    constructor() { this.duration = 4.388571428571429; this.playCalls = 0; this.currentTime = 0; }
     addEventListener() {}
     pause() {}
-    play() { return Promise.resolve(); }
+    play() { this.playCalls += 1; return Promise.resolve(); }
     cloneNode() { return new Audio(); }
   }
   const math = Object.create(Math);
   math.random = () => random;
-  const browserWindow = { devicePixelRatio: 1, matchMedia: () => ({ matches: mobile }), setTimeout() {},
+  const browserWindow = { devicePixelRatio: 1,
+    matchMedia: (query) => ({ matches: query.includes("orientation: portrait")
+      ? mobile && height > width : mobile }), setTimeout() {}, clearTimeout() {},
     ufoRunShowRewardedAd: async ({ placement }) => {
       rewardedAdCalls.push(placement); return rewardedAdResult;
     } };
@@ -50,8 +52,9 @@ function game(width = 390, height = 844, mobile = true) {
     planetSprites = [{ imageName: "test" }];
     buildShopInterface(); resizeGame(); startGame();
     globalThis.api = {
-      resizeGame, activateRandomPlanet, activateStar, activateAsteroid, moveDiagonal, moveFlyingItem,
-      showShop, handleCoinAd, handleContinueAd,
+      resizeGame, startGame, createSpikes, activateRandomPlanet, activateStar, activateAsteroid,
+      moveDiagonal, moveFlyingItem, showShop, showRanking, selectDifficulty,
+      handleCoinAd, handleContinueAd,
       opaqueOverlap, spriteRect, finishFrameAsGameOver, updateGame,
       tick: () => { ufoY = HEIGHT / 2; jumpVelocity = -GRAVITY; updateGame(); },
       safeTick: () => { ufoY = HEIGHT / 2; jumpVelocity = -GRAVITY; invincible = true;
@@ -66,7 +69,7 @@ function game(width = 390, height = 844, mobile = true) {
       starAtPlayer: () => { powerupActive = true; powerupX = UFO_X + 10;
         powerupY = HEIGHT / 2; powerupVelocityY = 0.8; },
       asteroidAtPlayer: () => { asteroids = [{ x: UFO_X + 10, y: HEIGHT / 2,
-        velocityY: 1, imageName: "asteroid" }]; },
+        velocityY: 1, imageName: "asteroid", spriteName: "asteroid", size: 64 }]; },
       endShield: () => { invincible = false; invincibleTime = 0; },
       effectAtEnd: () => { invincible = true; invincibleTime = invincibilityDurationFrames - 1; },
       starFar: () => { powerupActive = true; powerupX = WIDTH - 50;
@@ -79,7 +82,11 @@ function game(width = 390, height = 844, mobile = true) {
         feedback: feedback.map(item => item.text), asteroids: asteroids.length,
         asteroidItems: asteroids.map(item => ({ ...item })),
         positions: spikes.map(item => item.topX), nextStarAt, nextAsteroidAt,
-        coinAdsToday: profile.coinAdsToday }),
+        coinAdsToday: profile.coinAdsToday, difficulty: currentDifficulty,
+        selectedDifficulty: profile.difficulty, spikeSpeed, spikeFrequency,
+        scoreSoundPlays: scoreSound.playCalls,
+        rankings: Object.fromEntries(Object.entries(profile.rankings)
+          .map(([key, entries]) => [key, entries.map(item => ({ ...item }))])) }),
     };})();`, scope);
   return { api: scope.api, nodes, random: (value) => { random = value; },
     adResult: (value) => { rewardedAdResult = value; }, adCalls: rewardedAdCalls,
@@ -159,6 +166,25 @@ test("Los dos asteroides se intercalan en cada aparición", () => {
     "asteroid,asteroid2,asteroid");
 });
 
+test("Las tres dificultades aplican sus reglas de velocidad y asteroides", () => {
+  const easy = game(); easy.api.selectDifficulty("easy"); easy.api.startGame();
+  assert.equal(easy.api.read().difficulty, "easy");
+  assert.equal(easy.api.read().spikeSpeed, 2.35); assert.equal(easy.api.read().spikeFrequency, 110);
+  easy.api.passed(6); easy.api.tick();
+  assert.equal(easy.api.read().spikeSpeed, 2.6); assert.equal(easy.api.read().spikeFrequency, 107);
+  easy.api.clear(); easy.api.passed(20); easy.api.tick(); assert.equal(easy.api.read().asteroids, 0);
+
+  const hard = game(); hard.api.selectDifficulty("hard"); hard.api.startGame();
+  hard.api.passed(3); hard.api.tick();
+  assert.equal(hard.api.read().difficulty, "hard"); assert.equal(hard.api.read().asteroids, 1);
+  assert.equal(hard.api.read().nextAsteroidAt, 7.5);
+});
+
+test("El sonido de puntuación usa inmediatamente el audio precargado", () => {
+  const g = game(); g.api.passed(1); g.api.tick();
+  assert.equal(g.api.read().score, 1); assert.equal(g.api.read().scoreSoundPlays, 1);
+});
+
 test("Recoger planeta suma +1 con animación y conserva monedas previas", () => {
   const g = game(); g.api.planetAtPlayer(); g.api.tick();
   assert.equal(g.api.read().score, 1); assert(g.api.read().feedback.includes("+1"));
@@ -195,6 +221,41 @@ test("En móvil planeta, estrella y asteroide nacen a la derecha y avanzan horiz
   g.api.tick(); const asteroidAfter = g.api.read().asteroidItems[0];
   assert(asteroidAfter.x < asteroidBefore.x); assert.equal(asteroidAfter.y, asteroidBefore.y);
   assert.equal(asteroidBefore.x - asteroidAfter.x, 8 * g.api.read().WIDTH / 800);
+  assert.equal(asteroidBefore.size, 48);
+});
+
+test("En móvil vertical hay más espacio entre pinchos y entre cada par", () => {
+  const portrait = game();
+  const spikes = portrait.api.createSpikes(500);
+  assert.equal(spikes.bottomY - (spikes.topY + portrait.api.read().spikeHeight), 240);
+  for (let index = 0; index < 194; index += 1) portrait.api.safeTick();
+  assert.equal(portrait.api.read().positions.length, 0);
+  portrait.api.safeTick(); assert.equal(portrait.api.read().positions.length, 1);
+
+  const landscape = game(844, 390, true);
+  const landscapeSpikes = landscape.api.createSpikes(500);
+  assert.equal(landscapeSpikes.bottomY - (landscapeSpikes.topY + landscape.api.read().spikeHeight), 180);
+  landscape.api.activateAsteroid();
+  assert.equal(landscape.api.read().asteroidItems[0].size, 64);
+});
+
+test("La ayuda, Hangar y ranking por dificultad están disponibles", () => {
+  assert(html.includes('id="shop-button" class="action secondary" type="button">Hangar</button>'));
+  assert(html.includes('id="help-button"'));
+  assert(html.includes('id="ranking-button"'));
+  for (const text of ["Tu UFO", "Pinchos", "Techo y suelo", "Planetas", "Estrella", "Asteroides"]) {
+    assert(html.includes(text), text);
+  }
+  for (const difficulty of ["easy", "normal", "hard"]) {
+    assert(html.includes(`data-ranking-difficulty="${difficulty}"`));
+  }
+});
+
+test("El ranking conserva el mejor resultado local de cada partida", () => {
+  const g = game(); g.api.planetAtPlayer(); g.api.tick(); g.api.finishFrameAsGameOver();
+  const ranking = g.api.read().rankings.normal;
+  assert.equal(ranking.length, 1); assert.equal(ranking[0].name, "PILOTO");
+  assert.equal(ranking[0].score, 1);
 });
 
 test("La tienda entrega 50 monedas por anuncio y respeta el máximo diario de 10", async () => {
@@ -276,7 +337,7 @@ test("Asteroides matan, salvo durante invencibilidad", () => {
 });
 
 test("Se conserva separación móvil y estado al girar la pantalla", () => {
-  const g = game(); for (let i = 0; i < 149; i++) g.api.safeTick();
+  const g = game(); for (let i = 0; i < 194; i++) g.api.safeTick();
   assert.equal(g.api.read().positions.length, 0); g.api.safeTick();
   assert.equal(g.api.read().positions.length, 1);
   assert(g.api.read().positions[0] > g.api.read().WIDTH);

@@ -9,7 +9,10 @@ Versión web de UFO RUN, un juego arcade de estética pixel-art espacial.
 - Usa la estrella para obtener invencibilidad durante exactamente el mismo tiempo que dura su sonido; un contador de 5 segundos aparece sobre la nave al comenzar el efecto.
 - Los planetas aparecen cada 3 obstáculos, las estrellas cada 12 y los asteroides cada 10. Las dos variantes de asteroide se intercalan en cada aparición.
 - Planetas, estrellas y asteroides entran progresivamente desde fuera del borde derecho. En móvil avanzan horizontalmente desde una altura aleatoria; en escritorio se mueven en diagonal y rebotan arriba y abajo.
+- Hay tres dificultades: Fácil elimina los asteroides y suaviza la velocidad, Normal conserva el equilibrio original y Difícil duplica la frecuencia de asteroides.
+- En móvil vertical, los pinchos tienen una abertura y una separación mayores, y los asteroides se muestran más pequeños.
 - Los puntos se guardan como monedas para desbloquear naves en el hangar.
+- El menú incluye una guía ilustrada y un ranking local con top 10 separado para Fácil, Normal y Difícil.
 - Al perder se ofrece una continuación por anuncio una vez por partida. El hangar también ofrece 50 monedas por anuncio, hasta 10 veces por día.
 - La apertura presenta a B&Z Studios y muestra los créditos de Luis Zabala y Agustín Bustamante antes del menú principal.
 

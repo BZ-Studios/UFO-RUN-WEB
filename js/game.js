@@ -23,9 +23,12 @@
   const INITIAL_SPIKE_FREQUENCY = 90;
   const INITIAL_SPIKE_SPEED = 3;
   const MOBILE_SPIKE_INTERVAL_MULTIPLIER = 1.65;
+  const MOBILE_PORTRAIT_SPIKE_INTERVAL_MULTIPLIER = 2.15;
+  const MOBILE_PORTRAIT_SPIKE_GAP = 240;
   const mobileLayoutQuery = window.matchMedia(
     "(pointer: coarse), (max-width: 700px), (orientation: landscape) and (max-height: 550px)",
   );
+  const mobilePortraitQuery = window.matchMedia("(orientation: portrait) and (max-width: 700px)");
 
   const POWERUP_SIZE = 50;
   const POWERUP_SPEED = 4;
@@ -35,10 +38,24 @@
   const PLANET_OBSTACLE_INTERVAL = 3;
   const STAR_OBSTACLE_INTERVAL = 12;
   const ASTEROID_SIZE = 64;
+  const MOBILE_PORTRAIT_ASTEROID_SIZE = 48;
   const ASTEROID_OBSTACLE_INTERVAL = 10;
   const ASTEROID_IMAGE_NAMES = ["asteroid", "asteroid2"];
   const COIN_AD_REWARD = 50;
   const DAILY_COIN_AD_LIMIT = 10;
+  const DIFFICULTIES = {
+    easy: { name: "Fácil", description: "Sin asteroides, velocidad y aumento más suaves",
+      initialSpeed: 2.35, initialFrequency: 110, progressionEvery: 6,
+      speedIncrement: 0.25, frequencyDecrease: 3, asteroidInterval: 0 },
+    normal: { name: "Normal", description: "Experiencia original de UFO RUN",
+      initialSpeed: INITIAL_SPIKE_SPEED, initialFrequency: INITIAL_SPIKE_FREQUENCY,
+      progressionEvery: 4, speedIncrement: 0.5, frequencyDecrease: 5,
+      asteroidInterval: ASTEROID_OBSTACLE_INTERVAL },
+    hard: { name: "Difícil", description: "El doble de apariciones de asteroides",
+      initialSpeed: INITIAL_SPIKE_SPEED, initialFrequency: INITIAL_SPIKE_FREQUENCY,
+      progressionEvery: 4, speedIncrement: 0.5, frequencyDecrease: 5,
+      asteroidInterval: ASTEROID_OBSTACLE_INTERVAL / 2 },
+  };
 
 
   const PROFILE_STORAGE_KEY = "ufoRunProfileV1";
@@ -154,6 +171,24 @@
     return `${year}-${month}-${day}`;
   }
 
+  function cleanPlayerName(value) {
+    const cleaned = String(value || "").trim().replace(/[^\p{L}\p{N} _-]/gu, "").slice(0, 12);
+    return cleaned || "PILOTO";
+  }
+
+  function normalizeRankings(value) {
+    const result = { easy: [], normal: [], hard: [] };
+    for (const difficulty of Object.keys(DIFFICULTIES)) {
+      if (!Array.isArray(value?.[difficulty])) continue;
+      result[difficulty] = value[difficulty].map((entry, index) => ({
+        id: typeof entry?.id === "string" ? entry.id : `legacy-${difficulty}-${index}`,
+        name: cleanPlayerName(entry?.name),
+        score: Math.max(0, Math.trunc(Number(entry?.score) || 0)),
+      })).filter((entry) => entry.score > 0).sort((a, b) => b.score - a.score).slice(0, 10);
+    }
+    return result;
+  }
+
   function loadProfile() {
     const fallback = {
       credits: 0,
@@ -163,6 +198,9 @@
       soundEnabled: true,
       coinAdDay: localDayKey(),
       coinAdsToday: 0,
+      difficulty: "normal",
+      playerName: "PILOTO",
+      rankings: normalizeRankings(),
     };
 
     try {
@@ -186,6 +224,9 @@
         coinAdDay: typeof stored.coinAdDay === "string" ? stored.coinAdDay : localDayKey(),
         coinAdsToday: Math.max(0, Math.min(DAILY_COIN_AD_LIMIT,
           Math.trunc(Number(stored.coinAdsToday) || 0))),
+        difficulty: DIFFICULTIES[stored.difficulty] ? stored.difficulty : "normal",
+        playerName: cleanPlayerName(stored.playerName),
+        rankings: normalizeRankings(stored.rankings),
       };
     } catch (_error) {
       return fallback;
@@ -219,6 +260,9 @@
   let spikeCounter = 0;
   let spikeFrequency = INITIAL_SPIKE_FREQUENCY;
   let spikeSpeed = INITIAL_SPIKE_SPEED;
+  let currentDifficulty = profile.difficulty;
+  let rankingDifficulty = profile.difficulty;
+  let currentRunId = "";
   let spikes = [];
   let score = 0;
   let passedObstacles = 0;
@@ -249,6 +293,8 @@
   const screenElements = {
     menu: document.getElementById("menu-screen"),
     shop: document.getElementById("shop-screen"),
+    help: document.getElementById("help-screen"),
+    ranking: document.getElementById("ranking-screen"),
     gameover: document.getElementById("gameover-screen"),
   };
   const skinCards = new Map();
@@ -273,6 +319,45 @@
       grid.append(card);
       skinCards.set(skin.id, { card, ownership, button });
     }
+  }
+
+  function renderRanking() {
+    const body = document.getElementById("ranking-body");
+    body.replaceChildren();
+    const entries = profile.rankings[rankingDifficulty];
+    if (!entries.length) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 3;
+      cell.className = "ranking-empty";
+      cell.textContent = "Aún no hay puntuaciones en esta dificultad";
+      row.append(cell);
+      body.append(row);
+      return;
+    }
+    entries.forEach((entry, index) => {
+      const row = document.createElement("tr");
+      for (const value of [index + 1, entry.name, entry.score]) {
+        const cell = document.createElement("td");
+        cell.textContent = String(value);
+        row.append(cell);
+      }
+      body.append(row);
+    });
+  }
+
+  function recordRankingScore() {
+    if (score <= 0 || !currentRunId) return;
+    const entries = profile.rankings[currentDifficulty];
+    const existing = entries.find((entry) => entry.id === currentRunId);
+    if (existing) {
+      existing.score = Math.max(existing.score, score);
+      existing.name = profile.playerName;
+    } else {
+      entries.push({ id: currentRunId, name: profile.playerName, score });
+    }
+    entries.sort((a, b) => b.score - a.score);
+    profile.rankings[currentDifficulty] = entries.slice(0, 10);
   }
 
   function syncInterface() {
@@ -301,7 +386,7 @@
     document.getElementById("equipped-preview").src = imageSources[skin.imageName];
     document.getElementById("equipped-name").textContent = skin.name;
     document.getElementById("equipped-name").style.color = skin.accent;
-    document.getElementById("back-button").hidden = state !== "shop";
+    document.getElementById("back-button").hidden = !["shop", "help", "ranking"].includes(state);
     const soundButton = document.getElementById("sound-button");
     soundButton.setAttribute("aria-pressed", String(!profile.soundEnabled));
     soundButton.setAttribute("aria-label", profile.soundEnabled ? "Silenciar sonido" : "Activar sonido");
@@ -324,6 +409,17 @@
       ? "Cargando anuncio..." : '<span aria-hidden="true">▶</span> Ver video y continuar';
     document.getElementById("continue-ad-status").textContent = continueUsed
       ? "Continuación utilizada en esta partida" : continueAdMessage;
+    document.querySelectorAll("[data-difficulty]").forEach((button) => {
+      const selected = button.dataset.difficulty === profile.difficulty;
+      button.setAttribute("aria-checked", String(selected));
+    });
+    document.getElementById("difficulty-description").textContent = DIFFICULTIES[profile.difficulty].description;
+    const playerNameInput = document.getElementById("player-name");
+    if (playerNameInput.value !== profile.playerName) playerNameInput.value = profile.playerName;
+    document.querySelectorAll("[data-ranking-difficulty]").forEach((button) => {
+      button.setAttribute("aria-selected", String(button.dataset.rankingDifficulty === rankingDifficulty));
+    });
+    if (state === "ranking") renderRanking();
     for (const skin of SKINS) {
       const elements = skinCards.get(skin.id);
       const owned = profile.ownedSkins.includes(skin.id);
@@ -365,7 +461,7 @@
     planetY = Math.max(20, Math.min(HEIGHT - PLANET_SIZE - 20, planetY));
     for (const asteroid of asteroids) {
       asteroid.x *= WIDTH / oldWidth;
-      asteroid.y = Math.max(0, Math.min(HEIGHT - ASTEROID_SIZE, asteroid.y + centerShift));
+      asteroid.y = Math.max(0, Math.min(HEIGHT - asteroid.size, asteroid.y + centerShift));
     }
     for (const item of feedback) {
       item.x *= WIDTH / oldWidth;
@@ -431,6 +527,12 @@
     playAudio(effect);
   }
 
+  function playScoreSound() {
+    // Reutiliza el audio ya precargado y evita la latencia de decodificar un clon nuevo.
+    stopAudio(scoreSound, true);
+    playAudio(scoreSound);
+  }
+
   function clearIntroTimers() {
     introTimers.forEach((timer) => window.clearTimeout(timer));
     introTimers = [];
@@ -483,8 +585,11 @@
     ufoY = HEIGHT / 2;
     jumpVelocity = 0;
     spikeCounter = 0;
-    spikeFrequency = INITIAL_SPIKE_FREQUENCY;
-    spikeSpeed = INITIAL_SPIKE_SPEED;
+    currentDifficulty = profile.difficulty;
+    const difficulty = DIFFICULTIES[currentDifficulty];
+    spikeFrequency = difficulty.initialFrequency;
+    spikeSpeed = difficulty.initialSpeed;
+    currentRunId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     spikes = [];
     score = 0;
     creditedScore = 0;
@@ -504,7 +609,7 @@
     powerupVelocityY = 0;
     nextStarAt = STAR_OBSTACLE_INTERVAL;
     starPending = false;
-    nextAsteroidAt = ASTEROID_OBSTACLE_INTERVAL / 2;
+    nextAsteroidAt = difficulty.asteroidInterval ? difficulty.asteroidInterval / 2 : Number.POSITIVE_INFINITY;
     nextAsteroidImageIndex = 0;
     asteroids = [];
     feedback = [];
@@ -538,6 +643,37 @@
     syncInterface();
     stopAudio(backgroundMusic, true);
     stopAudio(invincibilitySound, true);
+  }
+
+  function showHelp() {
+    state = "help";
+    accumulator = 0;
+    syncInterface();
+    stopAudio(backgroundMusic, true);
+    stopAudio(invincibilitySound, true);
+  }
+
+  function showRanking() {
+    rankingDifficulty = profile.difficulty;
+    state = "ranking";
+    accumulator = 0;
+    syncInterface();
+    stopAudio(backgroundMusic, true);
+    stopAudio(invincibilitySound, true);
+  }
+
+  function selectDifficulty(difficulty) {
+    if (!DIFFICULTIES[difficulty]) return;
+    profile.difficulty = difficulty;
+    rankingDifficulty = difficulty;
+    saveProfile();
+    syncInterface();
+  }
+
+  function selectRankingDifficulty(difficulty) {
+    if (!DIFFICULTIES[difficulty]) return;
+    rankingDifficulty = difficulty;
+    syncInterface();
   }
 
   function toggleSound() {
@@ -664,11 +800,12 @@
   function createSpikes(x) {
     const spread = Math.min(150, HEIGHT * 0.18);
     const gapCenter = randomBetween(HEIGHT / 2 - spread, HEIGHT / 2 + spread);
+    const gap = mobilePortraitQuery.matches ? MOBILE_PORTRAIT_SPIKE_GAP : 180;
     return {
       topX: x,
-      topY: gapCenter - 90 - SPIKE_HEIGHT,
+      topY: gapCenter - gap / 2 - SPIKE_HEIGHT,
       bottomX: x,
-      bottomY: gapCenter + 90,
+      bottomY: gapCenter + gap / 2,
       counted: false,
     };
   }
@@ -722,11 +859,14 @@
   function activateAsteroid() {
     const imageName = ASTEROID_IMAGE_NAMES[nextAsteroidImageIndex];
     nextAsteroidImageIndex = (nextAsteroidImageIndex + 1) % ASTEROID_IMAGE_NAMES.length;
+    const size = mobilePortraitQuery.matches ? MOBILE_PORTRAIT_ASTEROID_SIZE : ASTEROID_SIZE;
     asteroids.push({
-      x: spawnFromRight(ASTEROID_SIZE),
-      y: randomBetween(40, HEIGHT - ASTEROID_SIZE - 40),
+      x: spawnFromRight(size),
+      y: randomBetween(40, HEIGHT - size - 40),
       velocityY: (Math.random() < 0.5 ? -1 : 1) * randomBetween(0.8, 1.4),
       imageName,
+      spriteName: size === ASTEROID_SIZE ? imageName : `${imageName}Small`,
+      size,
     });
   }
 
@@ -787,8 +927,11 @@
         const height = Math.min(160, bodyEnd - y);
         ctx.drawImage(images[name], 0, top ? 0 : 40, 100, height, 0, y, 100, height);
       }
-    } else if (name === "asteroid" || name === "asteroid2") {
-      const source = images[name];
+    } else if (name.startsWith("asteroid")) {
+      const small = name.endsWith("Small");
+      const sourceName = small ? name.slice(0, -5) : name;
+      const targetSize = small ? MOBILE_PORTRAIT_ASTEROID_SIZE : ASTEROID_SIZE;
+      const source = images[sourceName];
       const scan = spriteSurface(source.width, source.height);
       scan.getContext("2d").drawImage(source, 0, 0);
       const data = scan.getContext("2d").getImageData(0, 0, source.width, source.height).data;
@@ -801,9 +944,9 @@
           }
         }
       }
-      surface = spriteSurface(ASTEROID_SIZE, ASTEROID_SIZE);
+      surface = spriteSurface(targetSize, targetSize);
       surface.getContext("2d").drawImage(source, left, top, right - left + 1, bottom - top + 1,
-        0, 0, ASTEROID_SIZE, ASTEROID_SIZE);
+        0, 0, targetSize, targetSize);
     } else {
       surface = spriteSurface(POWERUP_SIZE, POWERUP_SIZE);
       surface.getContext("2d").drawImage(images[name], 0, 0, POWERUP_SIZE, POWERUP_SIZE);
@@ -885,6 +1028,7 @@
     profile.credits += lastReward;
     creditedScore += lastReward;
     profile.bestScore = Math.max(profile.bestScore, score);
+    recordRankingScore();
     saveProfile();
     state = "gameover";
     continueAdMessage = continueUsed
@@ -909,8 +1053,10 @@
     let diedThisFrame = ufoRect.y < 0 || ufoRect.y + ufoRect.height > HEIGHT;
 
     spikeCounter += 1;
+    const mobileIntervalMultiplier = mobilePortraitQuery.matches
+      ? MOBILE_PORTRAIT_SPIKE_INTERVAL_MULTIPLIER : MOBILE_SPIKE_INTERVAL_MULTIPLIER;
     const spawnInterval = mobileLayoutQuery.matches
-      ? Math.ceil(spikeFrequency * MOBILE_SPIKE_INTERVAL_MULTIPLIER) : spikeFrequency;
+      ? Math.ceil(spikeFrequency * mobileIntervalMultiplier) : spikeFrequency;
     if (spikeCounter > spawnInterval) {
       spikes.push(createSpikes(spawnFromRight(SPIKE_WIDTH)));
       spikeCounter = 0;
@@ -926,10 +1072,11 @@
         spike.counted = true;
         passedObstacles += 1;
         score += 1;
-        playEffect(scoreSound);
-        if (passedObstacles < 44 && passedObstacles % 4 === 0) {
-          spikeSpeed += 0.5;
-          spikeFrequency -= 5;
+        playScoreSound();
+        const difficulty = DIFFICULTIES[currentDifficulty];
+        if (passedObstacles < 44 && passedObstacles % difficulty.progressionEvery === 0) {
+          spikeSpeed += difficulty.speedIncrement;
+          spikeFrequency = Math.max(48, spikeFrequency - difficulty.frequencyDecrease);
         }
         if (passedObstacles >= nextPlanetAt) {
           planetPending = true;
@@ -939,9 +1086,9 @@
           activateStar();
           nextStarAt += STAR_OBSTACLE_INTERVAL;
         }
-        if (passedObstacles >= nextAsteroidAt) {
+        if (difficulty.asteroidInterval && passedObstacles >= nextAsteroidAt) {
           activateAsteroid();
-          nextAsteroidAt += ASTEROID_OBSTACLE_INTERVAL;
+          nextAsteroidAt += difficulty.asteroidInterval;
         }
       }
     }
@@ -975,7 +1122,7 @@
       planetVelocityY = planet.velocityY;
       if (opaqueOverlap(ufoRect, spriteRect(getPlanetSprite(), planetX, planetY))) {
         score += 1;
-        playEffect(scoreSound);
+        playScoreSound();
         addFeedback("+1", planetX + PLANET_SIZE / 2, planetY, "#50dcff");
         planetActive = false;
       } else if (planetX + PLANET_SIZE < 0) {
@@ -984,12 +1131,13 @@
     }
 
     for (const asteroid of asteroids) {
-      moveFlyingItem(asteroid, ASTEROID_SIZE, ASTEROID_SPEED);
-      if (!invincible && opaqueOverlap(ufoRect, spriteRect(getSprite(asteroid.imageName), asteroid.x, asteroid.y))) {
+      moveFlyingItem(asteroid, asteroid.size, ASTEROID_SPEED);
+      if (!invincible && opaqueOverlap(ufoRect,
+        spriteRect(getSprite(asteroid.spriteName), asteroid.x, asteroid.y))) {
         diedThisFrame = true;
       }
     }
-    asteroids = asteroids.filter((asteroid) => asteroid.x + ASTEROID_SIZE >= 0);
+    asteroids = asteroids.filter((asteroid) => asteroid.x + asteroid.size >= 0);
     if (!invincible && collidesWithSpikes(ufoRect)) diedThisFrame = true;
 
     if (invincible) {
@@ -1025,7 +1173,7 @@
     drawSpikes();
     if (planetActive && currentPlanet) drawSprite(getPlanetSprite(), planetX, planetY);
     if (powerupActive) drawSprite(getSprite("powerup"), powerupX, powerupY);
-    for (const asteroid of asteroids) drawSprite(getSprite(asteroid.imageName), asteroid.x, asteroid.y);
+    for (const asteroid of asteroids) drawSprite(getSprite(asteroid.spriteName), asteroid.x, asteroid.y);
   }
 
   function drawFeedback() {
@@ -1135,7 +1283,7 @@
     } else if (state === "menu" && event.code === "KeyT") {
       event.preventDefault();
       showShop();
-    } else if (state === "shop" && event.code === "Escape") {
+    } else if (["shop", "help", "ranking"].includes(state) && event.code === "Escape") {
       event.preventDefault();
       showMainMenu();
     } else if (state === "gameover" && (event.code === "KeyR" || event.code === "Enter")) {
@@ -1152,6 +1300,8 @@
     "play-button": startGame,
     "restart-button": startGame,
     "shop-button": showShop,
+    "help-button": showHelp,
+    "ranking-button": showRanking,
     "back-button": showMainMenu,
     "menu-button": showMainMenu,
     "coin-ad-button": handleCoinAd,
@@ -1162,6 +1312,17 @@
   })) {
     document.getElementById(id).addEventListener("click", handler);
   }
+  document.querySelectorAll("[data-difficulty]").forEach((button) => {
+    button.addEventListener("click", () => selectDifficulty(button.dataset.difficulty));
+  });
+  document.querySelectorAll("[data-ranking-difficulty]").forEach((button) => {
+    button.addEventListener("click", () => selectRankingDifficulty(button.dataset.rankingDifficulty));
+  });
+  document.getElementById("player-name").addEventListener("change", (event) => {
+    profile.playerName = cleanPlayerName(event.target.value).toUpperCase();
+    saveProfile();
+    syncInterface();
+  });
   resizeGame();
   if (window.ResizeObserver) {
     new ResizeObserver(resizeGame).observe(canvas);
