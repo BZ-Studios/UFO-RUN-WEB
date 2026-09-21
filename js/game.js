@@ -44,21 +44,28 @@
   const DAILY_COIN_AD_LIMIT = 10;
   const SCORE_AUDIO_OFFSET_SECONDS = 0.045;
   const SPECIAL_SPAWN_COOLDOWN_FRAMES = 48;
+  const BOSS_TRIGGER_SCORE = 100;
+  const BOSS_DURATION_FRAMES = FPS * 30;
+  const BOSS_SCORE_REWARD = 10;
+  const BOSS_COIN_REWARD = 50;
   const DIFFICULTIES = {
     easy: { name: "Fácil", description: "Sin asteroides, velocidad y aumento más suaves",
       initialSpeed: 2.35, initialFrequency: 110, progressionEvery: 6,
       speedIncrement: 0.25, frequencyDecrease: 3, asteroidInterval: 0,
-      mobilePortraitSpeedMultiplier: 1.12, mobilePortraitIntervalMultiplier: 1.75 },
+      mobilePortraitSpeedMultiplier: 1.12, mobilePortraitIntervalMultiplier: 1.75,
+      bossProjectileInterval: 120, bossProjectileSpeed: 3.4 },
     normal: { name: "Normal", description: "Experiencia original de UFO RUN",
       initialSpeed: INITIAL_SPIKE_SPEED, initialFrequency: INITIAL_SPIKE_FREQUENCY,
       progressionEvery: 4, speedIncrement: 0.5, frequencyDecrease: 5,
       asteroidInterval: ASTEROID_OBSTACLE_INTERVAL,
-      mobilePortraitSpeedMultiplier: 1.25, mobilePortraitIntervalMultiplier: 1.55 },
+      mobilePortraitSpeedMultiplier: 1.25, mobilePortraitIntervalMultiplier: 1.55,
+      bossProjectileInterval: 90, bossProjectileSpeed: 4.2 },
     hard: { name: "Difícil", description: "El doble de apariciones de asteroides",
       initialSpeed: INITIAL_SPIKE_SPEED, initialFrequency: INITIAL_SPIKE_FREQUENCY,
       progressionEvery: 4, speedIncrement: 0.5, frequencyDecrease: 5,
       asteroidInterval: ASTEROID_OBSTACLE_INTERVAL / 2,
-      mobilePortraitSpeedMultiplier: 1.45, mobilePortraitIntervalMultiplier: 1.3 },
+      mobilePortraitSpeedMultiplier: 1.45, mobilePortraitIntervalMultiplier: 1.3,
+      bossProjectileInterval: 65, bossProjectileSpeed: 5 },
   };
 
 
@@ -110,6 +117,7 @@
     spikeBottom: "src/Pincho_bajo.png",
     asteroid: "src/Obstaculos/Asteroide.png",
     asteroid2: "src/Obstaculos/asteroide_2.png",
+    cosmicBoss: "src/boss_cosmico.png",
     planetMercury: "src/planetas/Mercurio.png",
     planetVenus: "src/planetas/Venus.png",
     planetEarth: "src/planetas/Tierra.png",
@@ -297,6 +305,14 @@
   let asteroidPending = false;
   let specialSpawnCooldown = 0;
   let asteroids = [];
+  let bossActive = false;
+  let bossCompleted = false;
+  let bossTimeFrames = 0;
+  let bossX = WIDTH;
+  let bossY = HEIGHT / 2;
+  let bossProjectileCounter = 0;
+  let bossVolleyCount = 0;
+  let bossProjectiles = [];
   let feedback = [];
   const spriteCache = new Map();
 
@@ -436,6 +452,7 @@
     document.querySelector(".wallet").hidden = state === "playing";
     document.getElementById("authors-footer").hidden = state !== "gameover";
     document.getElementById("invincible-label").hidden = state !== "playing" || !invincible;
+    document.getElementById("boss-hud").hidden = state !== "playing" || !bossActive;
     gameHud.hidden = state !== "playing";
     interfaceElement.hidden = !screenElements[state];
     for (const [name, screen] of Object.entries(screenElements)) {
@@ -531,6 +548,12 @@
     for (const asteroid of asteroids) {
       asteroid.x *= WIDTH / oldWidth;
       asteroid.y = Math.max(0, Math.min(HEIGHT - asteroid.size, asteroid.y + centerShift));
+    }
+    bossX *= WIDTH / oldWidth;
+    bossY += centerShift;
+    for (const projectile of bossProjectiles) {
+      projectile.x *= WIDTH / oldWidth;
+      projectile.y = Math.max(0, Math.min(HEIGHT - projectile.size, projectile.y + centerShift));
     }
     for (const item of feedback) {
       item.x *= WIDTH / oldWidth;
@@ -737,6 +760,14 @@
     asteroidPending = false;
     specialSpawnCooldown = 0;
     asteroids = [];
+    bossActive = false;
+    bossCompleted = false;
+    bossTimeFrames = 0;
+    bossX = WIDTH;
+    bossY = HEIGHT / 2;
+    bossProjectileCounter = 0;
+    bossVolleyCount = 0;
+    bossProjectiles = [];
     feedback = [];
     lastReward = 0;
     continueUsed = false;
@@ -892,6 +923,7 @@
     const safeRight = UFO_X + UFO_WIDTH + SPIKE_WIDTH;
     spikes = spikes.filter((spike) => spike.topX > safeRight);
     asteroids = asteroids.filter((asteroid) => asteroid.x > safeRight);
+    bossProjectiles = [];
     invincible = true;
     invincibleTime = 0;
     syncInvincibilityDuration();
@@ -1043,8 +1075,8 @@
     item.x -= speed * WIDTH / 800;
   }
 
-  function addFeedback(text, x, y, color) {
-    feedback.push({ text, x, y, color, age: 0, duration: 80 });
+  function addFeedback(text, x, y, color, duration = 80) {
+    feedback.push({ text, x, y, color, age: 0, duration });
   }
 
   function rasterSprite(surface) {
@@ -1199,6 +1231,122 @@
     if (rewindSound) stopAudio(invincibilitySound, true);
   }
 
+  function bossDimensions() {
+    const width = Math.min(WIDTH * 0.54, 460);
+    const source = images.cosmicBoss;
+    const aspect = source?.width && source?.height ? source.height / source.width : 0.5;
+    return { width, height: width * aspect };
+  }
+
+  function startBossBattle() {
+    if (bossActive || bossCompleted || score < BOSS_TRIGGER_SCORE) return false;
+    const dimensions = bossDimensions();
+    bossActive = true;
+    bossTimeFrames = 0;
+    bossX = WIDTH + 32;
+    bossY = Math.max(90, HEIGHT * 0.24 - dimensions.height / 2);
+    bossProjectileCounter = 0;
+    bossVolleyCount = 0;
+    bossProjectiles = [];
+    spikes = [];
+    spikeCounter = 0;
+    powerupActive = false;
+    planetActive = false;
+    asteroids = [];
+    starPending = false;
+    planetPending = false;
+    asteroidPending = false;
+    specialSpawnCooldown = 0;
+    addFeedback("¡JEFE CÓSMICO!", WIDTH / 2, HEIGHT * 0.42, "#d881ff", 150);
+    syncInterface();
+    return true;
+  }
+
+  function checkBossTrigger() {
+    if (!bossCompleted && !bossActive && score >= BOSS_TRIGGER_SCORE) startBossBattle();
+  }
+
+  function createBossProjectile(targetY) {
+    const dimensions = bossDimensions();
+    const size = mobilePortraitQuery.matches ? 18 : 16;
+    const x = bossX + dimensions.width * 0.08;
+    const y = bossY + dimensions.height * 0.55;
+    const dx = UFO_X + UFO_WIDTH / 2 - x;
+    const dy = targetY - y;
+    const length = Math.max(1, Math.hypot(dx, dy));
+    const speed = DIFFICULTIES[currentDifficulty].bossProjectileSpeed * Math.max(0.72, WIDTH / 800);
+    bossProjectiles.push({ x, y, size, velocityX: dx / length * speed, velocityY: dy / length * speed });
+  }
+
+  function fireBossVolley() {
+    bossVolleyCount += 1;
+    const targetY = ufoY + UFO_HEIGHT / 2;
+    if (bossVolleyCount % 4 === 0) {
+      createBossProjectile(targetY - 90);
+      createBossProjectile(targetY);
+      createBossProjectile(targetY + 90);
+    } else {
+      createBossProjectile(targetY);
+    }
+  }
+
+  function finishBossBattle() {
+    if (!bossActive) return;
+    bossActive = false;
+    bossCompleted = true;
+    bossProjectiles = [];
+    bossTimeFrames = BOSS_DURATION_FRAMES;
+    score += BOSS_SCORE_REWARD;
+    profile.credits += BOSS_COIN_REWARD;
+    spikeCounter = 0;
+    addFeedback(`¡JEFE SUPERADO! +${BOSS_SCORE_REWARD}`, WIDTH / 2, HEIGHT * 0.42, "#50dcff", 190);
+    saveProfile();
+    syncInterface();
+  }
+
+  function updateBossBattle(ufoRect) {
+    const dimensions = bossDimensions();
+    const targetX = WIDTH - dimensions.width + 18;
+    bossX += (targetX - bossX) * 0.045;
+    bossY = Math.max(78, HEIGHT * 0.24 - dimensions.height / 2 + Math.sin(bossTimeFrames / 38) * 18);
+    bossProjectileCounter += 1;
+    if (bossProjectileCounter >= DIFFICULTIES[currentDifficulty].bossProjectileInterval && bossX < WIDTH - 20) {
+      bossProjectileCounter = 0;
+      fireBossVolley();
+    }
+
+    let hit = false;
+    for (const projectile of bossProjectiles) {
+      projectile.x += projectile.velocityX;
+      projectile.y += projectile.velocityY;
+      if (!invincible && rectanglesOverlap(ufoRect, {
+        x: projectile.x, y: projectile.y, width: projectile.size, height: projectile.size,
+      })) hit = true;
+    }
+    bossProjectiles = bossProjectiles.filter((projectile) => projectile.x + projectile.size >= -20 &&
+      projectile.x <= WIDTH + 20 && projectile.y + projectile.size >= -20 && projectile.y <= HEIGHT + 20);
+    bossTimeFrames += 1;
+    if (bossTimeFrames >= BOSS_DURATION_FRAMES && !hit) finishBossBattle();
+    return hit;
+  }
+
+  function finishGameplayUpdate(diedThisFrame) {
+    if (invincible) {
+      invincibleTime += 1;
+      if (invincibleTime >= invincibilityDurationFrames) {
+        endInvincibility();
+        // No modificar la posición de ninguna estrella al terminar el efecto.
+      }
+    }
+    feedback.forEach((item) => { item.age += 1; });
+    feedback = feedback.filter((item) => item.age < item.duration);
+
+    if (diedThisFrame) {
+      playEffect(deathSound);
+      finishFrameAsGameOver();
+    }
+  }
+
   function updateGame() {
     const difficulty = DIFFICULTIES[currentDifficulty];
     const portraitSpeedMultiplier = mobilePortraitQuery.matches
@@ -1208,6 +1356,12 @@
     ufoY += jumpVelocity;
     const ufoRect = spriteRect(getUfoSprite(), UFO_X, ufoY);
     let diedThisFrame = ufoRect.y < 0 || ufoRect.y + ufoRect.height > HEIGHT;
+
+    if (bossActive) {
+      diedThisFrame = updateBossBattle(ufoRect) || diedThisFrame;
+      finishGameplayUpdate(diedThisFrame);
+      return;
+    }
 
     spikeCounter += 1;
     const mobileIntervalMultiplier = mobilePortraitQuery.matches
@@ -1230,25 +1384,31 @@
         passedObstacles += 1;
         score += 1;
         playScoreSound();
-        if (passedObstacles < 44 && passedObstacles % difficulty.progressionEvery === 0) {
+        checkBossTrigger();
+        if (!bossActive && passedObstacles < 44 && passedObstacles % difficulty.progressionEvery === 0) {
           spikeSpeed += difficulty.speedIncrement;
           spikeFrequency = Math.max(48, spikeFrequency - difficulty.frequencyDecrease);
         }
-        if (passedObstacles >= nextPlanetAt) {
+        if (!bossActive && passedObstacles >= nextPlanetAt) {
           planetPending = true;
           nextPlanetAt += PLANET_OBSTACLE_INTERVAL;
         }
-        if (passedObstacles >= nextStarAt) {
+        if (!bossActive && passedObstacles >= nextStarAt) {
           starPending = true;
           nextStarAt += STAR_OBSTACLE_INTERVAL;
         }
-        if (difficulty.asteroidInterval && passedObstacles >= nextAsteroidAt) {
+        if (!bossActive && difficulty.asteroidInterval && passedObstacles >= nextAsteroidAt) {
           asteroidPending = true;
           nextAsteroidAt += difficulty.asteroidInterval;
         }
       }
     }
-    spikes = remainingSpikes;
+    spikes = bossActive ? [] : remainingSpikes;
+    if (bossActive) {
+      diedThisFrame = updateBossBattle(ufoRect) || diedThisFrame;
+      finishGameplayUpdate(diedThisFrame);
+      return;
+    }
 
     if (powerupActive) {
       const star = { x: powerupX, y: powerupY, velocityY: powerupVelocityY };
@@ -1282,6 +1442,7 @@
         addFeedback("+1", planetX + PLANET_SIZE / 2, planetY, "#50dcff");
         planetActive = false;
         beginSpecialSpawnCooldown();
+        checkBossTrigger();
       } else if (planetX + PLANET_SIZE < 0) {
         planetActive = false;
         beginSpecialSpawnCooldown();
@@ -1301,20 +1462,7 @@
     if (!diedThisFrame) trySpawnPendingSpecial();
     if (!invincible && collidesWithSpikes(ufoRect)) diedThisFrame = true;
 
-    if (invincible) {
-      invincibleTime += 1;
-      if (invincibleTime >= invincibilityDurationFrames) {
-        endInvincibility();
-        // No modificar la posición de ninguna estrella al terminar el efecto.
-      }
-    }
-    feedback.forEach((item) => { item.age += 1; });
-    feedback = feedback.filter((item) => item.age < item.duration);
-
-    if (diedThisFrame) {
-      playEffect(deathSound);
-      finishFrameAsGameOver();
-    }
+    finishGameplayUpdate(diedThisFrame);
   }
 
   function drawSprite(sprite, x, y) {
@@ -1329,12 +1477,39 @@
     }
   }
 
+  function drawBossBattle() {
+    if (!bossActive) return;
+    const dimensions = bossDimensions();
+    context.save();
+    context.imageSmoothingEnabled = false;
+    context.shadowColor = "#632dff";
+    context.shadowBlur = 18;
+    context.drawImage(images.cosmicBoss, Math.trunc(bossX), Math.trunc(bossY),
+      Math.trunc(dimensions.width), Math.trunc(dimensions.height));
+    context.restore();
+
+    for (const projectile of bossProjectiles) {
+      const x = Math.trunc(projectile.x), y = Math.trunc(projectile.y), size = projectile.size;
+      context.save();
+      context.fillStyle = "#371078";
+      context.shadowColor = "#50dcff";
+      context.shadowBlur = 12;
+      context.fillRect(x, y, size, size);
+      context.fillStyle = "#d94cff";
+      context.fillRect(x + 3, y + 3, size - 6, size - 6);
+      context.fillStyle = "#eaffff";
+      context.fillRect(x + Math.floor(size / 2) - 2, y + Math.floor(size / 2) - 2, 4, 4);
+      context.restore();
+    }
+  }
+
   function drawWorld() {
     context.clearRect(0, 0, WIDTH, HEIGHT);
     drawSpikes();
     if (planetActive && currentPlanet) drawSprite(getPlanetSprite(), planetX, planetY);
     if (powerupActive) drawSprite(getSprite("powerup"), powerupX, powerupY);
     for (const asteroid of asteroids) drawSprite(getSprite(asteroid.spriteName), asteroid.x, asteroid.y);
+    drawBossBattle();
   }
 
   function drawFeedback() {
@@ -1397,6 +1572,12 @@
       const scoreLabel = "Puntaje: " + score;
       document.getElementById("invincible-label").hidden = !invincible;
       if (gameHud.textContent !== scoreLabel) gameHud.textContent = scoreLabel;
+      if (bossActive) {
+        const remainingRatio = Math.max(0, (BOSS_DURATION_FRAMES - bossTimeFrames) / BOSS_DURATION_FRAMES);
+        document.getElementById("boss-timer").textContent = `${Math.max(0,
+          Math.ceil((BOSS_DURATION_FRAMES - bossTimeFrames) / FPS))}s`;
+        document.getElementById("boss-time-fill").style.transform = `scaleX(${remainingRatio})`;
+      }
     }
   }
 

@@ -48,6 +48,10 @@
       </canvas>
       <p id="game-hud" class="game-hud" hidden>Puntaje: 0</p>
       <p id="invincible-label" class="game-status" hidden>INVENCIBLE</p>
+      <section id="boss-hud" class="boss-hud" aria-label="Batalla contra el jefe" hidden>
+        <div class="boss-hud-heading"><span>Devorador cósmico</span><strong id="boss-timer">30s</strong></div>
+        <div class="boss-time-track" aria-hidden="true"><span id="boss-time-fill"></span></div>
+      </section>
       <header id="toolbar" class="toolbar" hidden>
         <button id="back-button" class="control back-button" type="button" hidden>Volver</button>
         <div class="toolbar-actions">
@@ -93,6 +97,7 @@
             <article class="help-card"><img src="src/planetas/Tierra.png" alt="Planeta Tierra"><div><h3>Planetas</h3><p>Recoge cualquiera de los planetas para obtener 1 punto adicional.</p></div></article>
             <article class="help-card"><img src="src/powerup_star.png" alt="Estrella de invencibilidad"><div><h3>Estrella</h3><p>Activa 5 segundos de invencibilidad. El contador aparece sobre la nave.</p></div></article>
             <article class="help-card"><div class="help-asteroids"><img src="src/Obstaculos/Asteroide.png" alt="Asteroide"><img src="src/Obstaculos/asteroide_2.png" alt="Segundo asteroide"></div><div><h3>Asteroides</h3><p>Esquívalos: viajan muy rápido y destruyen la nave si no eres invencible.</p></div></article>
+            <article class="help-card"><img src="src/boss_cosmico.png" alt="Devorador cósmico"><div><h3>Jefe cósmico</h3><p>Aparece al alcanzar 100 puntos. Sobrevive 30 segundos a sus ataques; durante la batalla no aparecen pinchos.</p></div></article>
           </div>
         </div>
         <div id="ranking-screen" class="screen ranking-screen" hidden>

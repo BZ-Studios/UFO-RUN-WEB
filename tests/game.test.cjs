@@ -54,6 +54,7 @@ function game(width = 390, height = 844, mobile = true) {
     globalThis.api = {
       resizeGame, startGame, createSpikes, activateRandomPlanet, activateStar, activateAsteroid,
       moveDiagonal, moveFlyingItem, showShop, showRanking, selectDifficulty, confirmPlayerName,
+      startBossBattle, finishBossBattle,
       handleCoinAd, handleContinueAd,
       opaqueOverlap, spriteRect, finishFrameAsGameOver, updateGame,
       tick: () => { ufoY = HEIGHT / 2; jumpVelocity = -GRAVITY; updateGame(); },
@@ -63,6 +64,10 @@ function game(width = 390, height = 844, mobile = true) {
         powerupActive = false; starPending = false; asteroidPending = false;
         specialSpawnCooldown = 0; asteroids = []; },
       expirePlanet: () => { planetX = -PLANET_SIZE - 1; },
+      setScore: (value) => { score = value; },
+      bossProjectileAtPlayer: () => { bossProjectiles = [{ x: UFO_X, y: HEIGHT / 2,
+        size: 22, velocityX: 0, velocityY: 0 }]; },
+      bossNearEnd: () => { bossTimeFrames = BOSS_DURATION_FRAMES - 1; bossProjectiles = []; },
       passed: (count) => { passedObstacles = count - 1;
         spikes = [{ topX: UFO_X - 102, bottomX: UFO_X - 102,
           topY: -SPIKE_HEIGHT, bottomY: HEIGHT, counted: false }]; },
@@ -88,6 +93,8 @@ function game(width = 390, height = 844, mobile = true) {
         selectedDifficulty: profile.difficulty, spikeSpeed, spikeFrequency,
         playerName: profile.playerName, playerNameConfirmed: profile.playerNameConfirmed,
         starPending, planetPending, asteroidPending, specialSpawnCooldown,
+        bossActive, bossCompleted, bossTimeFrames, bossDurationFrames: BOSS_DURATION_FRAMES,
+        bossProjectiles: bossProjectiles.length,
         portraitSpeedMultiplier: DIFFICULTIES[currentDifficulty].mobilePortraitSpeedMultiplier,
         portraitIntervalMultiplier: DIFFICULTIES[currentDifficulty].mobilePortraitIntervalMultiplier,
         scoreSoundPlays: scoreSound.playCalls,
@@ -300,6 +307,39 @@ test("La ayuda, Hangar y ranking por dificultad están disponibles", () => {
   for (const difficulty of ["easy", "normal", "hard"]) {
     assert(html.includes(`data-ranking-difficulty="${difficulty}"`));
   }
+});
+
+test("El jefe aparece a los 100 puntos y suspende todos los pinchos", () => {
+  const g = game();
+  g.api.setScore(99); g.api.passed(100); g.api.tick();
+  let state = g.api.read();
+  assert.equal(state.score, 100);
+  assert.equal(state.bossActive, true);
+  assert.equal(state.positions.length, 0);
+  assert.equal(state.bossDurationFrames, 30 * 80);
+  for (let index = 0; index < 200; index += 1) g.api.safeTick();
+  state = g.api.read();
+  assert.equal(state.bossActive, true);
+  assert.equal(state.positions.length, 0);
+  assert(state.bossProjectiles > 0);
+  assert(html.includes('id="boss-hud"'));
+  assert(html.includes("Devorador cósmico"));
+});
+
+test("Sobrevivir 30 segundos derrota al jefe y entrega la recompensa", () => {
+  const g = game(); g.api.setScore(100); g.api.startBossBattle();
+  g.api.bossNearEnd(); g.api.safeTick();
+  const state = g.api.read();
+  assert.equal(state.bossActive, false);
+  assert.equal(state.bossCompleted, true);
+  assert.equal(state.score, 110);
+  assert.equal(state.credits, 72);
+});
+
+test("Los proyectiles del jefe destruyen al UFO sin invencibilidad", () => {
+  const g = game(); g.api.setScore(100); g.api.startBossBattle();
+  g.api.bossProjectileAtPlayer(); g.api.tick();
+  assert.equal(g.api.read().state, "gameover");
 });
 
 test("El ranking conserva el mejor resultado local de cada partida", () => {

@@ -10,6 +10,7 @@ Versión web de UFO RUN, un juego arcade de estética pixel-art espacial.
 - Los planetas aparecen cada 3 obstáculos, las estrellas cada 12 y los asteroides cada 10. Las dos variantes de asteroide se intercalan en cada aparición.
 - Planetas, estrellas y asteroides entran progresivamente desde fuera del borde derecho y aparecen de uno en uno, con una pausa breve entre ellos. En móvil avanzan horizontalmente desde una altura aleatoria; en escritorio se mueven en diagonal y rebotan arriba y abajo.
 - Hay tres dificultades: Fácil elimina los asteroides y suaviza la velocidad, Normal conserva el equilibrio original y Difícil duplica la frecuencia de asteroides.
+- Al alcanzar 100 puntos aparece el Devorador Cósmico. La batalla dura 30 segundos, reemplaza temporalmente los pinchos por proyectiles dirigidos y premia la victoria con 10 puntos y 50 monedas.
 - En móvil vertical, las tres dificultades tienen un ritmo más ágil; los pinchos conservan una abertura amplia y los asteroides se muestran más pequeños.
 - Los puntos se guardan como monedas para desbloquear naves en el hangar.
 - Al entrar por primera vez se solicita el nombre del piloto y se guarda en el navegador. El menú incluye una guía ilustrada y un ranking top 10 separado para Fácil, Normal y Difícil.
