@@ -53,14 +53,16 @@ function game(width = 390, height = 844, mobile = true) {
     buildShopInterface(); resizeGame(); startGame();
     globalThis.api = {
       resizeGame, startGame, createSpikes, activateRandomPlanet, activateStar, activateAsteroid,
-      moveDiagonal, moveFlyingItem, showShop, showRanking, selectDifficulty,
+      moveDiagonal, moveFlyingItem, showShop, showRanking, selectDifficulty, confirmPlayerName,
       handleCoinAd, handleContinueAd,
       opaqueOverlap, spriteRect, finishFrameAsGameOver, updateGame,
       tick: () => { ufoY = HEIGHT / 2; jumpVelocity = -GRAVITY; updateGame(); },
       safeTick: () => { ufoY = HEIGHT / 2; jumpVelocity = -GRAVITY; invincible = true;
         invincibleTime = 0; updateGame(); },
       clear: () => { spikes = []; planetActive = false; planetPending = false;
-        powerupActive = false; starPending = false; asteroids = []; },
+        powerupActive = false; starPending = false; asteroidPending = false;
+        specialSpawnCooldown = 0; asteroids = []; },
+      expirePlanet: () => { planetX = -PLANET_SIZE - 1; },
       passed: (count) => { passedObstacles = count - 1;
         spikes = [{ topX: UFO_X - 102, bottomX: UFO_X - 102,
           topY: -SPIKE_HEIGHT, bottomY: HEIGHT, counted: false }]; },
@@ -84,6 +86,10 @@ function game(width = 390, height = 844, mobile = true) {
         positions: spikes.map(item => item.topX), nextStarAt, nextAsteroidAt,
         coinAdsToday: profile.coinAdsToday, difficulty: currentDifficulty,
         selectedDifficulty: profile.difficulty, spikeSpeed, spikeFrequency,
+        playerName: profile.playerName, playerNameConfirmed: profile.playerNameConfirmed,
+        starPending, planetPending, asteroidPending, specialSpawnCooldown,
+        portraitSpeedMultiplier: DIFFICULTIES[currentDifficulty].mobilePortraitSpeedMultiplier,
+        portraitIntervalMultiplier: DIFFICULTIES[currentDifficulty].mobilePortraitIntervalMultiplier,
         scoreSoundPlays: scoreSound.playCalls,
         rankings: Object.fromEntries(Object.entries(profile.rankings)
           .map(([key, entries]) => [key, entries.map(item => ({ ...item }))])) }),
@@ -150,20 +156,45 @@ test("Los planetas aparecen antes y varían su altura", () => {
 });
 
 test("Estrella cada 12 obstáculos y asteroide cada 10 desfasado 5", () => {
-  const g = game();
-  g.api.passed(4); g.api.tick(); assert.equal(g.api.read().powerupActive, false);
-  g.api.clear(); g.api.passed(5); g.api.tick(); assert.equal(g.api.read().asteroids, 1);
-  g.api.clear(); g.api.passed(12); g.api.tick(); assert.equal(g.api.read().powerupActive, true);
-  assert.equal(g.api.read().nextStarAt, 24);
-  g.api.clear(); g.api.passed(15); g.api.tick(); assert.equal(g.api.read().asteroids, 1);
-  assert.equal(g.api.read().nextAsteroidAt, 25);
+  const before = game();
+  before.api.passed(4); before.api.tick(); assert.equal(before.api.read().powerupActive, false);
+  const firstAsteroid = game();
+  firstAsteroid.api.passed(5); firstAsteroid.api.tick();
+  assert.equal(firstAsteroid.api.read().asteroidPending, true); // El planeta del punto 3 entra primero.
+  assert.equal(firstAsteroid.api.read().nextAsteroidAt, 15);
+  const star = game();
+  star.api.passed(12); star.api.tick(); assert.equal(star.api.read().powerupActive, true);
+  assert.equal(star.api.read().nextStarAt, 24);
 });
 
 test("Los dos asteroides se intercalan en cada aparición", () => {
   const g = game();
-  g.api.clear(); g.api.activateAsteroid(); g.api.activateAsteroid(); g.api.activateAsteroid();
-  assert.equal(g.api.read().asteroidItems.map((item) => item.imageName).join(","),
-    "asteroid,asteroid2,asteroid");
+  g.api.clear(); g.api.activateAsteroid();
+  const first = g.api.read().asteroidItems[0].imageName;
+  g.api.clear(); g.api.activateAsteroid();
+  const second = g.api.read().asteroidItems[0].imageName;
+  g.api.clear(); g.api.activateAsteroid();
+  const third = g.api.read().asteroidItems[0].imageName;
+  assert.equal([first, second, third].join(","), "asteroid,asteroid2,asteroid");
+});
+
+test("Planetas, estrellas y asteroides se ordenan sin aparecer juntos", () => {
+  const g = game();
+  g.api.clear(); g.api.activateRandomPlanet(); g.api.activateStar(); g.api.activateAsteroid();
+  let state = g.api.read();
+  assert.equal(state.planetActive, true);
+  assert.equal(state.powerupActive, false);
+  assert.equal(state.asteroids, 0);
+  assert.equal(state.starPending, true);
+  assert.equal(state.asteroidPending, true);
+
+  g.api.expirePlanet(); g.api.tick();
+  assert.equal(g.api.read().specialSpawnCooldown, 48);
+  for (let index = 0; index < 48; index += 1) g.api.tick();
+  state = g.api.read();
+  assert.equal(state.powerupActive, true);
+  assert.equal(state.asteroids, 0);
+  assert.equal(state.asteroidPending, true);
 });
 
 test("Las tres dificultades aplican sus reglas de velocidad y asteroides", () => {
@@ -176,13 +207,22 @@ test("Las tres dificultades aplican sus reglas de velocidad y asteroides", () =>
 
   const hard = game(); hard.api.selectDifficulty("hard"); hard.api.startGame();
   hard.api.passed(3); hard.api.tick();
-  assert.equal(hard.api.read().difficulty, "hard"); assert.equal(hard.api.read().asteroids, 1);
+  assert.equal(hard.api.read().difficulty, "hard"); assert.equal(hard.api.read().asteroidPending, true);
   assert.equal(hard.api.read().nextAsteroidAt, 7.5);
 });
 
 test("El sonido de puntuación usa inmediatamente el audio precargado", () => {
   const g = game(); g.api.passed(1); g.api.tick();
   assert.equal(g.api.read().score, 1); assert.equal(g.api.read().scoreSoundPlays, 1);
+});
+
+test("El nombre se solicita una vez y queda confirmado en el perfil", () => {
+  const g = game();
+  assert.equal(g.api.confirmPlayerName(""), false);
+  assert.equal(g.api.read().playerNameConfirmed, false);
+  assert.equal(g.api.confirmPlayerName("Luís_27"), true);
+  assert.equal(g.api.read().playerName, "LUÍS_27");
+  assert.equal(g.api.read().playerNameConfirmed, true);
 });
 
 test("Recoger planeta suma +1 con animación y conserva monedas previas", () => {
@@ -220,7 +260,8 @@ test("En móvil planeta, estrella y asteroide nacen a la derecha y avanzan horiz
   const asteroidBefore = g.api.read().asteroidItems[0]; assert(asteroidBefore.x > g.api.read().WIDTH);
   g.api.tick(); const asteroidAfter = g.api.read().asteroidItems[0];
   assert(asteroidAfter.x < asteroidBefore.x); assert.equal(asteroidAfter.y, asteroidBefore.y);
-  assert.equal(asteroidBefore.x - asteroidAfter.x, 8 * g.api.read().WIDTH / 800);
+  assert.equal(asteroidBefore.x - asteroidAfter.x,
+    8 * g.api.read().portraitSpeedMultiplier * g.api.read().WIDTH / 800);
   assert.equal(asteroidBefore.size, 48);
 });
 
@@ -228,7 +269,7 @@ test("En móvil vertical hay más espacio entre pinchos y entre cada par", () =>
   const portrait = game();
   const spikes = portrait.api.createSpikes(500);
   assert.equal(spikes.bottomY - (spikes.topY + portrait.api.read().spikeHeight), 240);
-  for (let index = 0; index < 194; index += 1) portrait.api.safeTick();
+  for (let index = 0; index < 140; index += 1) portrait.api.safeTick();
   assert.equal(portrait.api.read().positions.length, 0);
   portrait.api.safeTick(); assert.equal(portrait.api.read().positions.length, 1);
 
@@ -237,6 +278,16 @@ test("En móvil vertical hay más espacio entre pinchos y entre cada par", () =>
   assert.equal(landscapeSpikes.bottomY - (landscapeSpikes.topY + landscape.api.read().spikeHeight), 180);
   landscape.api.activateAsteroid();
   assert.equal(landscape.api.read().asteroidItems[0].size, 64);
+});
+
+test("Las tres dificultades son más rápidas en móvil vertical", () => {
+  const values = [];
+  for (const difficulty of ["easy", "normal", "hard"]) {
+    const g = game(); g.api.selectDifficulty(difficulty); g.api.startGame();
+    values.push(g.api.read().portraitSpeedMultiplier);
+  }
+  assert.deepEqual(values, [1.12, 1.25, 1.45]);
+  assert(values.every((value) => value > 1));
 });
 
 test("La ayuda, Hangar y ranking por dificultad están disponibles", () => {
@@ -318,7 +369,8 @@ test("Cada aparición móvil obtiene una altura aleatoria", () => {
 test("Acabar invencibilidad no teletransporta otra estrella activa", () => {
   const g = game(); g.api.effectAtEnd(); g.api.starFar();
   const before = g.api.read(); g.api.tick(); const after = g.api.read();
-  assert.equal(after.powerupX, before.powerupX - 4 * before.WIDTH / 800);
+  assert.equal(after.powerupX,
+    before.powerupX - 4 * before.portraitSpeedMultiplier * before.WIDTH / 800);
   assert.equal(after.powerupY, before.powerupY);
   assert(after.powerupActive); assert.equal(after.invincible, false);
 });
@@ -337,7 +389,7 @@ test("Asteroides matan, salvo durante invencibilidad", () => {
 });
 
 test("Se conserva separación móvil y estado al girar la pantalla", () => {
-  const g = game(); for (let i = 0; i < 194; i++) g.api.safeTick();
+  const g = game(); for (let i = 0; i < 140; i++) g.api.safeTick();
   assert.equal(g.api.read().positions.length, 0); g.api.safeTick();
   assert.equal(g.api.read().positions.length, 1);
   assert(g.api.read().positions[0] > g.api.read().WIDTH);

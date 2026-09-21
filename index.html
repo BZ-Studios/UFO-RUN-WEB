@@ -24,6 +24,18 @@
         </div>
         <button id="skip-intro-button" class="skip-intro" type="button">Saltar intro</button>
       </section>
+      <section id="player-name-screen" class="name-screen" aria-label="Identificación del piloto" hidden>
+        <form id="player-name-form" class="name-card">
+          <img src="src/ufo_principal.png" alt="UFO RUN">
+          <p class="name-kicker">Bienvenido, piloto</p>
+          <h2>¿Cómo te llamas?</h2>
+          <p>Este nombre aparecerá en el ranking y quedará guardado en este dispositivo.</p>
+          <label for="entry-player-name">Nombre del piloto</label>
+          <input id="entry-player-name" name="playerName" type="text" maxlength="12" autocomplete="nickname" required placeholder="PILOTO">
+          <p id="player-name-error" class="name-error" role="alert" hidden>Escribe un nombre para continuar</p>
+          <button class="action primary" type="submit">Continuar</button>
+        </form>
+      </section>
       <canvas
         id="game"
         width="800"
@@ -85,7 +97,7 @@
         </div>
         <div id="ranking-screen" class="screen ranking-screen" hidden>
           <div class="ranking-panel">
-            <div class="section-heading"><h2>🏆 Ranking</h2><p>Mejores pilotos locales</p></div>
+            <div class="section-heading"><h2>🏆 Ranking</h2><p id="ranking-subtitle">Cargando ranking global...</p></div>
             <label class="pilot-name">Nombre del piloto<input id="player-name" type="text" maxlength="12" autocomplete="nickname" value="PILOTO"></label>
             <div class="ranking-tabs" role="tablist" aria-label="Ranking por dificultad">
               <button type="button" data-ranking-difficulty="easy" role="tab">Fácil</button>

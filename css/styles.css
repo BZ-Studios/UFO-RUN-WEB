@@ -27,6 +27,17 @@ p, h1, h2, figure { margin: 0; }
 .credit-entry strong { font-size: clamp(18px,2vw,27px); color: #fff; }
 .credit-entry span { font-size: clamp(9px,1vw,13px); color: #a8bce3; }
 .skip-intro { position: absolute; z-index: 2; right: max(18px,env(safe-area-inset-right)); bottom: max(18px,env(safe-area-inset-bottom)); padding: 9px 12px; border: 1px solid rgba(135,158,211,.5); border-radius: 8px; background: rgba(5,10,24,.72); color: #a8bce3; font-size: 10px; }
+.name-screen { position: absolute; z-index: 12; inset: 0; display: grid; place-items: center; padding: max(20px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left)); background: rgba(0,3,14,.9); overflow-y: auto; }
+.name-card { display: flex; flex-direction: column; align-items: stretch; width: min(100%,500px); padding: clamp(22px,4vw,38px); border: 2px solid var(--border); border-radius: 18px; background: rgba(7,14,34,.98); box-shadow: 0 0 35px rgba(25,90,255,.3); text-align: center; }
+.name-card > img { align-self: center; width: 120px; margin-bottom: 14px; image-rendering: pixelated; filter: drop-shadow(0 0 14px rgba(80,220,255,.5)); }
+.name-kicker { color: var(--cyan); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; }
+.name-card h2 { margin: 10px 0 12px; }
+.name-card > p:not(.name-kicker):not(.name-error) { color: #9eb2d7; font-size: 10px; line-height: 1.65; }
+.name-card label { margin: 22px 0 8px; color: #dce8ff; font-size: 10px; text-align: left; }
+.name-card input { min-height: 52px; padding: 10px 14px; border: 2px solid var(--border); border-radius: 10px; background: #050b1d; color: #fff; font: inherit; font-size: 16px; text-transform: uppercase; }
+.name-card input:focus { outline: 2px solid var(--cyan); outline-offset: 3px; }
+.name-card .action { margin-top: 18px; }
+.name-error { margin-top: 8px; color: #ff7884; font-size: 9px; }
 .interface { position: absolute; inset: 0; display: flex; flex-direction: column; padding: max(16px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left)); background: rgba(0,3,14,.58); overflow-y: auto; }
 .toolbar { position: absolute; z-index: 3; top: max(16px,env(safe-area-inset-top)); left: max(20px,env(safe-area-inset-left)); right: max(20px,env(safe-area-inset-right)); display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; pointer-events: none; }
 .toolbar > * { pointer-events: auto; }

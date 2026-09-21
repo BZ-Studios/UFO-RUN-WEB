@@ -23,7 +23,6 @@
   const INITIAL_SPIKE_FREQUENCY = 90;
   const INITIAL_SPIKE_SPEED = 3;
   const MOBILE_SPIKE_INTERVAL_MULTIPLIER = 1.65;
-  const MOBILE_PORTRAIT_SPIKE_INTERVAL_MULTIPLIER = 2.15;
   const MOBILE_PORTRAIT_SPIKE_GAP = 240;
   const mobileLayoutQuery = window.matchMedia(
     "(pointer: coarse), (max-width: 700px), (orientation: landscape) and (max-height: 550px)",
@@ -43,18 +42,23 @@
   const ASTEROID_IMAGE_NAMES = ["asteroid", "asteroid2"];
   const COIN_AD_REWARD = 50;
   const DAILY_COIN_AD_LIMIT = 10;
+  const SCORE_AUDIO_OFFSET_SECONDS = 0.045;
+  const SPECIAL_SPAWN_COOLDOWN_FRAMES = 48;
   const DIFFICULTIES = {
     easy: { name: "Fácil", description: "Sin asteroides, velocidad y aumento más suaves",
       initialSpeed: 2.35, initialFrequency: 110, progressionEvery: 6,
-      speedIncrement: 0.25, frequencyDecrease: 3, asteroidInterval: 0 },
+      speedIncrement: 0.25, frequencyDecrease: 3, asteroidInterval: 0,
+      mobilePortraitSpeedMultiplier: 1.12, mobilePortraitIntervalMultiplier: 1.75 },
     normal: { name: "Normal", description: "Experiencia original de UFO RUN",
       initialSpeed: INITIAL_SPIKE_SPEED, initialFrequency: INITIAL_SPIKE_FREQUENCY,
       progressionEvery: 4, speedIncrement: 0.5, frequencyDecrease: 5,
-      asteroidInterval: ASTEROID_OBSTACLE_INTERVAL },
+      asteroidInterval: ASTEROID_OBSTACLE_INTERVAL,
+      mobilePortraitSpeedMultiplier: 1.25, mobilePortraitIntervalMultiplier: 1.55 },
     hard: { name: "Difícil", description: "El doble de apariciones de asteroides",
       initialSpeed: INITIAL_SPIKE_SPEED, initialFrequency: INITIAL_SPIKE_FREQUENCY,
       progressionEvery: 4, speedIncrement: 0.5, frequencyDecrease: 5,
-      asteroidInterval: ASTEROID_OBSTACLE_INTERVAL / 2 },
+      asteroidInterval: ASTEROID_OBSTACLE_INTERVAL / 2,
+      mobilePortraitSpeedMultiplier: 1.45, mobilePortraitIntervalMultiplier: 1.3 },
   };
 
 
@@ -124,6 +128,8 @@
   const deathSound = new Audio("src/musica/sonido_muerte.mp3");
   const scoreSound = new Audio("src/musica/sonido_puntaje.mp3");
   const invincibilitySound = new Audio("src/musica/sonido_invencibilidad.mp3");
+  let scoreAudioContext = null;
+  let scoreAudioBuffer = null;
 
   backgroundMusic.loop = true;
   backgroundMusic.volume = 0.4;
@@ -200,6 +206,7 @@
       coinAdsToday: 0,
       difficulty: "normal",
       playerName: "PILOTO",
+      playerNameConfirmed: false,
       rankings: normalizeRankings(),
     };
 
@@ -226,6 +233,7 @@
           Math.trunc(Number(stored.coinAdsToday) || 0))),
         difficulty: DIFFICULTIES[stored.difficulty] ? stored.difficulty : "normal",
         playerName: cleanPlayerName(stored.playerName),
+        playerNameConfirmed: stored.playerNameConfirmed === true,
         rankings: normalizeRankings(stored.rankings),
       };
     } catch (_error) {
@@ -234,6 +242,9 @@
   }
 
   let profile = loadProfile();
+  const globalRankings = { easy: null, normal: null, hard: null };
+  const globalRankingStatus = { easy: "idle", normal: "idle", hard: "idle" };
+  const globalRankingRequestIds = { easy: 0, normal: 0, hard: 0 };
 
   function saveProfile() {
     try {
@@ -283,12 +294,15 @@
   let starPending = false;
   let nextAsteroidAt = ASTEROID_OBSTACLE_INTERVAL / 2;
   let nextAsteroidImageIndex = 0;
+  let asteroidPending = false;
+  let specialSpawnCooldown = 0;
   let asteroids = [];
   let feedback = [];
   const spriteCache = new Map();
 
   const interfaceElement = document.getElementById("interface");
   const introElement = document.getElementById("intro-screen");
+  const playerNameScreen = document.getElementById("player-name-screen");
   const gameHud = document.getElementById("game-hud");
   const screenElements = {
     menu: document.getElementById("menu-screen"),
@@ -323,8 +337,14 @@
 
   function renderRanking() {
     const body = document.getElementById("ranking-body");
+    const subtitle = document.getElementById("ranking-subtitle");
     body.replaceChildren();
-    const entries = profile.rankings[rankingDifficulty];
+    const globalEntries = globalRankings[rankingDifficulty];
+    const status = globalRankingStatus[rankingDifficulty];
+    const entries = Array.isArray(globalEntries) ? globalEntries : profile.rankings[rankingDifficulty];
+    subtitle.textContent = status === "loading"
+      ? "Cargando ranking global..."
+      : Array.isArray(globalEntries) ? "Mejores pilotos globales" : "Mejores pilotos de este dispositivo";
     if (!entries.length) {
       const row = document.createElement("tr");
       const cell = document.createElement("td");
@@ -358,12 +378,61 @@
     }
     entries.sort((a, b) => b.score - a.score);
     profile.rankings[currentDifficulty] = entries.slice(0, 10);
+    submitGlobalScore(currentDifficulty, profile.playerName, score);
+  }
+
+  function normalizeGlobalScores(value) {
+    if (!Array.isArray(value)) return [];
+    return value.map((entry) => ({
+      name: cleanPlayerName(entry?.name),
+      score: Math.max(0, Math.trunc(Number(entry?.score) || 0)),
+    })).filter((entry) => entry.score > 0).sort((a, b) => b.score - a.score).slice(0, 10);
+  }
+
+  async function loadGlobalRanking(difficulty, force = false) {
+    if (!DIFFICULTIES[difficulty] || typeof window.fetch !== "function") return;
+    if (!force && (globalRankingStatus[difficulty] === "loading" || Array.isArray(globalRankings[difficulty]))) return;
+    const requestId = ++globalRankingRequestIds[difficulty];
+    globalRankingStatus[difficulty] = "loading";
+    if (state === "ranking" && rankingDifficulty === difficulty) renderRanking();
+    try {
+      const response = await window.fetch(`/api/scores?difficulty=${encodeURIComponent(difficulty)}`,
+        { headers: { Accept: "application/json" } });
+      if (!response.ok) throw new Error(`Ranking ${response.status}`);
+      const payload = await response.json();
+      if (requestId !== globalRankingRequestIds[difficulty]) return;
+      globalRankings[difficulty] = normalizeGlobalScores(payload.scores);
+      globalRankingStatus[difficulty] = "ready";
+    } catch (_error) {
+      if (requestId !== globalRankingRequestIds[difficulty]) return;
+      globalRankings[difficulty] = null;
+      globalRankingStatus[difficulty] = "fallback";
+    }
+    if (state === "ranking" && rankingDifficulty === difficulty) renderRanking();
+  }
+
+  async function submitGlobalScore(difficulty, name, submittedScore) {
+    if (typeof window.fetch !== "function") return;
+    try {
+      const response = await window.fetch("/api/scores", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ difficulty, name, score: submittedScore }),
+      });
+      if (!response.ok) return;
+      globalRankings[difficulty] = null;
+      globalRankingStatus[difficulty] = "idle";
+      if (state === "ranking" && rankingDifficulty === difficulty) loadGlobalRanking(difficulty, true);
+    } catch (_error) {
+      // El resultado local permanece disponible si el servicio global no responde.
+    }
   }
 
   function syncInterface() {
     refreshDailyAdCounter();
-    document.getElementById("toolbar").hidden = state === "loading" || state === "intro";
+    document.getElementById("toolbar").hidden = ["loading", "intro", "name"].includes(state);
     introElement.hidden = state !== "intro";
+    playerNameScreen.hidden = state !== "name";
     document.querySelector(".wallet").hidden = state === "playing";
     document.getElementById("authors-footer").hidden = state !== "gameover";
     document.getElementById("invincible-label").hidden = state !== "playing" || !invincible;
@@ -496,8 +565,23 @@
       image: images[crop.imageName],
       ...crop,
     }));
+    await prepareScoreAudio();
     await document.fonts.load('74px "UFO Run"');
     applyBackground();
+  }
+
+  async function prepareScoreAudio() {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass || typeof window.fetch !== "function") return;
+    try {
+      scoreAudioContext = new AudioContextClass();
+      const response = await window.fetch("src/musica/sonido_puntaje.mp3");
+      if (!response.ok) return;
+      scoreAudioBuffer = await scoreAudioContext.decodeAudioData(await response.arrayBuffer());
+    } catch (_error) {
+      scoreAudioContext = null;
+      scoreAudioBuffer = null;
+    }
   }
 
   function applyBackground() {
@@ -528,8 +612,25 @@
   }
 
   function playScoreSound() {
-    // Reutiliza el audio ya precargado y evita la latencia de decodificar un clon nuevo.
+    if (!profile.soundEnabled) return;
+    if (scoreAudioContext && scoreAudioBuffer) {
+      if (scoreAudioContext.state === "suspended") scoreAudioContext.resume().catch(() => {});
+      const source = scoreAudioContext.createBufferSource();
+      const gain = scoreAudioContext.createGain();
+      source.buffer = scoreAudioBuffer;
+      gain.gain.value = scoreSound.volume;
+      source.connect(gain);
+      gain.connect(scoreAudioContext.destination);
+      source.start(0, Math.min(SCORE_AUDIO_OFFSET_SECONDS, scoreAudioBuffer.duration / 4));
+      return;
+    }
+    // Fallback para navegadores sin Web Audio: reutiliza el audio ya precargado.
     stopAudio(scoreSound, true);
+    try {
+      scoreSound.currentTime = SCORE_AUDIO_OFFSET_SECONDS;
+    } catch (_error) {
+      // El archivo todavía puede estar cargándose.
+    }
     playAudio(scoreSound);
   }
 
@@ -564,6 +665,27 @@
     introTimers.push(window.setTimeout(finishIntro, 6550));
   }
 
+  function showPlayerNameEntry() {
+    state = "name";
+    const input = document.getElementById("entry-player-name");
+    input.value = profile.playerNameConfirmed ? profile.playerName : "";
+    document.getElementById("player-name-error").hidden = true;
+    syncInterface();
+    window.setTimeout(() => input.focus(), 0);
+  }
+
+  function confirmPlayerName(rawName) {
+    if (!String(rawName || "").trim()) {
+      document.getElementById("player-name-error").hidden = false;
+      return false;
+    }
+    profile.playerName = cleanPlayerName(rawName).toUpperCase();
+    profile.playerNameConfirmed = true;
+    saveProfile();
+    startIntro();
+    return true;
+  }
+
   function stopAudio(audio, rewind = false) {
     audio.pause();
     if (rewind) {
@@ -576,6 +698,7 @@
   }
 
   function startGame() {
+    scoreAudioContext?.resume().catch(() => {});
     if (gamesStarted > 0) {
       backgroundIndex = (backgroundIndex + 1) % backgroundSources.length;
     }
@@ -611,6 +734,8 @@
     starPending = false;
     nextAsteroidAt = difficulty.asteroidInterval ? difficulty.asteroidInterval / 2 : Number.POSITIVE_INFINITY;
     nextAsteroidImageIndex = 0;
+    asteroidPending = false;
+    specialSpawnCooldown = 0;
     asteroids = [];
     feedback = [];
     lastReward = 0;
@@ -658,6 +783,7 @@
     state = "ranking";
     accumulator = 0;
     syncInterface();
+    loadGlobalRanking(rankingDifficulty);
     stopAudio(backgroundMusic, true);
     stopAudio(invincibilitySound, true);
   }
@@ -674,6 +800,7 @@
     if (!DIFFICULTIES[difficulty]) return;
     rankingDifficulty = difficulty;
     syncInterface();
+    loadGlobalRanking(difficulty);
   }
 
   function toggleSound() {
@@ -830,8 +957,29 @@
     return WIDTH + size + 24;
   }
 
+  function specialItemActive() {
+    return planetActive || powerupActive || asteroids.length > 0;
+  }
+
+  function beginSpecialSpawnCooldown() {
+    specialSpawnCooldown = SPECIAL_SPAWN_COOLDOWN_FRAMES;
+  }
+
+  function trySpawnPendingSpecial() {
+    if (specialItemActive() || specialSpawnCooldown > 0) return;
+    if (starPending) {
+      if (!invincible) activateStar();
+      return;
+    }
+    if (planetPending) {
+      activateRandomPlanet();
+    } else if (asteroidPending) {
+      activateAsteroid();
+    }
+  }
+
   function activateRandomPlanet() {
-    if (planetActive || powerupActive) {
+    if (specialItemActive() || specialSpawnCooldown > 0) {
       planetPending = true;
       return;
     }
@@ -845,7 +993,7 @@
 
   function activateStar() {
     // No reutilizar ni recolocar una estrella que ya está atravesando la pantalla.
-    if (powerupActive || planetActive || invincible) {
+    if (specialItemActive() || specialSpawnCooldown > 0 || invincible) {
       starPending = true;
       return;
     }
@@ -857,6 +1005,10 @@
   }
 
   function activateAsteroid() {
+    if (specialItemActive() || specialSpawnCooldown > 0) {
+      asteroidPending = true;
+      return;
+    }
     const imageName = ASTEROID_IMAGE_NAMES[nextAsteroidImageIndex];
     nextAsteroidImageIndex = (nextAsteroidImageIndex + 1) % ASTEROID_IMAGE_NAMES.length;
     const size = mobilePortraitQuery.matches ? MOBILE_PORTRAIT_ASTEROID_SIZE : ASTEROID_SIZE;
@@ -868,6 +1020,7 @@
       spriteName: size === ASTEROID_SIZE ? imageName : `${imageName}Small`,
       size,
     });
+    asteroidPending = false;
   }
 
   function moveDiagonal(item, size, speed) {
@@ -1047,6 +1200,10 @@
   }
 
   function updateGame() {
+    const difficulty = DIFFICULTIES[currentDifficulty];
+    const portraitSpeedMultiplier = mobilePortraitQuery.matches
+      ? difficulty.mobilePortraitSpeedMultiplier : 1;
+    if (specialSpawnCooldown > 0) specialSpawnCooldown -= 1;
     jumpVelocity += GRAVITY;
     ufoY += jumpVelocity;
     const ufoRect = spriteRect(getUfoSprite(), UFO_X, ufoY);
@@ -1054,7 +1211,7 @@
 
     spikeCounter += 1;
     const mobileIntervalMultiplier = mobilePortraitQuery.matches
-      ? MOBILE_PORTRAIT_SPIKE_INTERVAL_MULTIPLIER : MOBILE_SPIKE_INTERVAL_MULTIPLIER;
+      ? difficulty.mobilePortraitIntervalMultiplier : MOBILE_SPIKE_INTERVAL_MULTIPLIER;
     const spawnInterval = mobileLayoutQuery.matches
       ? Math.ceil(spikeFrequency * mobileIntervalMultiplier) : spikeFrequency;
     if (spikeCounter > spawnInterval) {
@@ -1064,8 +1221,8 @@
 
     const remainingSpikes = [];
     for (const spike of spikes) {
-      spike.topX -= spikeSpeed * WIDTH / 800;
-      spike.bottomX -= spikeSpeed * WIDTH / 800;
+      spike.topX -= spikeSpeed * portraitSpeedMultiplier * WIDTH / 800;
+      spike.bottomX -= spikeSpeed * portraitSpeedMultiplier * WIDTH / 800;
       if (spike.topX + SPIKE_WIDTH <= 0) continue;
       remainingSpikes.push(spike);
       if (!spike.counted && UFO_X > spike.topX + SPIKE_WIDTH) {
@@ -1073,7 +1230,6 @@
         passedObstacles += 1;
         score += 1;
         playScoreSound();
-        const difficulty = DIFFICULTIES[currentDifficulty];
         if (passedObstacles < 44 && passedObstacles % difficulty.progressionEvery === 0) {
           spikeSpeed += difficulty.speedIncrement;
           spikeFrequency = Math.max(48, spikeFrequency - difficulty.frequencyDecrease);
@@ -1083,11 +1239,11 @@
           nextPlanetAt += PLANET_OBSTACLE_INTERVAL;
         }
         if (passedObstacles >= nextStarAt) {
-          activateStar();
+          starPending = true;
           nextStarAt += STAR_OBSTACLE_INTERVAL;
         }
         if (difficulty.asteroidInterval && passedObstacles >= nextAsteroidAt) {
-          activateAsteroid();
+          asteroidPending = true;
           nextAsteroidAt += difficulty.asteroidInterval;
         }
       }
@@ -1096,7 +1252,7 @@
 
     if (powerupActive) {
       const star = { x: powerupX, y: powerupY, velocityY: powerupVelocityY };
-      moveFlyingItem(star, POWERUP_SIZE, POWERUP_SPEED);
+      moveFlyingItem(star, POWERUP_SIZE, POWERUP_SPEED * portraitSpeedMultiplier);
       powerupX = star.x;
       powerupY = star.y;
       powerupVelocityY = star.velocityY;
@@ -1105,18 +1261,18 @@
         invincibleTime = 0;
         syncInvincibilityDuration();
         powerupActive = false;
+        beginSpecialSpawnCooldown();
         addFeedback("INVENCIBLE", UFO_X + UFO_WIDTH / 2, ufoY - 42, "#ffd648");
         playAudio(invincibilitySound, true);
       } else if (powerupX + POWERUP_SIZE < 0) {
         powerupActive = false;
+        beginSpecialSpawnCooldown();
       }
     }
 
-    if (starPending && !powerupActive && !planetActive && !invincible) activateStar();
-    if (planetPending && !powerupActive && !planetActive && !starPending) activateRandomPlanet();
     if (planetActive) {
       const planet = { x: planetX, y: planetY, velocityY: planetVelocityY };
-      moveFlyingItem(planet, PLANET_SIZE, spikeSpeed);
+      moveFlyingItem(planet, PLANET_SIZE, spikeSpeed * portraitSpeedMultiplier);
       planetX = planet.x;
       planetY = planet.y;
       planetVelocityY = planet.velocityY;
@@ -1125,19 +1281,24 @@
         playScoreSound();
         addFeedback("+1", planetX + PLANET_SIZE / 2, planetY, "#50dcff");
         planetActive = false;
+        beginSpecialSpawnCooldown();
       } else if (planetX + PLANET_SIZE < 0) {
         planetActive = false;
+        beginSpecialSpawnCooldown();
       }
     }
 
+    const asteroidWasActive = asteroids.length > 0;
     for (const asteroid of asteroids) {
-      moveFlyingItem(asteroid, asteroid.size, ASTEROID_SPEED);
+      moveFlyingItem(asteroid, asteroid.size, ASTEROID_SPEED * portraitSpeedMultiplier);
       if (!invincible && opaqueOverlap(ufoRect,
         spriteRect(getSprite(asteroid.spriteName), asteroid.x, asteroid.y))) {
         diedThisFrame = true;
       }
     }
     asteroids = asteroids.filter((asteroid) => asteroid.x + asteroid.size >= 0);
+    if (asteroidWasActive && asteroids.length === 0) beginSpecialSpawnCooldown();
+    if (!diedThisFrame) trySpawnPendingSpecial();
     if (!invincible && collidesWithSpikes(ufoRect)) diedThisFrame = true;
 
     if (invincible) {
@@ -1320,8 +1481,13 @@
   });
   document.getElementById("player-name").addEventListener("change", (event) => {
     profile.playerName = cleanPlayerName(event.target.value).toUpperCase();
+    profile.playerNameConfirmed = true;
     saveProfile();
     syncInterface();
+  });
+  document.getElementById("player-name-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    confirmPlayerName(document.getElementById("entry-player-name").value);
   });
   resizeGame();
   if (window.ResizeObserver) {
@@ -1332,7 +1498,8 @@
 
   loadAssets()
     .then(() => {
-      startIntro();
+      if (profile.playerNameConfirmed) startIntro();
+      else showPlayerNameEntry();
       previousTime = performance.now();
       animationFrameId = requestAnimationFrame(frame);
     })
