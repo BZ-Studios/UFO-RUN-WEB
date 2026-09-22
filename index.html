@@ -48,6 +48,7 @@
       </canvas>
       <p id="game-hud" class="game-hud" hidden>Puntaje: 0</p>
       <p id="invincible-label" class="game-status" hidden>INVENCIBLE</p>
+      <p id="flight-start-prompt" class="flight-start-prompt" hidden>Toca, haz clic o pulsa Espacio para iniciar</p>
       <section id="boss-hud" class="boss-hud" aria-label="Batalla contra el jefe" hidden>
         <div class="boss-hud-heading"><span>Devorador cósmico</span><strong id="boss-timer">30s</strong></div>
         <div class="boss-time-track" aria-hidden="true"><span id="boss-time-fill"></span></div>
@@ -103,7 +104,13 @@
         <div id="ranking-screen" class="screen ranking-screen" hidden>
           <div class="ranking-panel">
             <div class="section-heading"><h2>🏆 Ranking</h2><p id="ranking-subtitle">Cargando ranking global...</p></div>
-            <label class="pilot-name">Nombre del piloto<input id="player-name" type="text" maxlength="12" autocomplete="nickname" value="PILOTO"></label>
+            <div class="pilot-name">
+              <label for="player-name">Nombre del piloto</label>
+              <div class="pilot-name-control">
+                <input id="player-name" type="text" maxlength="12" autocomplete="nickname" value="PILOTO" readonly>
+                <button id="edit-name-button" type="button" aria-label="Cambiar nombre por 100 monedas" title="Cambiar nombre por 100 monedas">✎ <span>100</span></button>
+              </div>
+            </div>
             <div class="ranking-tabs" role="tablist" aria-label="Ranking por dificultad">
               <button type="button" data-ranking-difficulty="easy" role="tab">Fácil</button>
               <button type="button" data-ranking-difficulty="normal" role="tab" aria-selected="true">Normal</button>
@@ -123,6 +130,40 @@
         </div>
         <footer id="authors-footer" class="authors interface-footer" hidden>Créditos<span>Luis Zabala</span><small>Creador · Desarrollador · Tester</small><span>Agustín Bustamante</span><small>Creador · Desarrollador · Tester</small></footer>
       </section>
+      <dialog id="name-edit-dialog" class="pixel-dialog">
+        <form id="name-edit-form" class="dialog-card">
+          <p class="dialog-kicker">Registro de piloto</p>
+          <h2>Cambiar nombre</h2>
+          <p>Modificar el nombre cuesta 100 monedas.</p>
+          <label for="new-player-name">Nuevo nombre</label>
+          <input id="new-player-name" type="text" maxlength="12" autocomplete="nickname" required>
+          <p id="name-edit-error" class="dialog-error" role="alert" hidden></p>
+          <div class="dialog-actions"><button id="cancel-name-edit" type="button">Cancelar</button><button class="confirm" type="submit">Cambiar · 100</button></div>
+        </form>
+      </dialog>
+      <dialog id="admin-login-dialog" class="pixel-dialog">
+        <form id="admin-login-form" class="dialog-card">
+          <p class="dialog-kicker">Herramientas de prueba · F2</p>
+          <h2>Acceso admin</h2>
+          <label for="admin-password">Contraseña</label>
+          <input id="admin-password" type="password" inputmode="numeric" autocomplete="off" required>
+          <p id="admin-password-error" class="dialog-error" role="alert" hidden>Contraseña incorrecta</p>
+          <div class="dialog-actions"><button id="cancel-admin-login" type="button">Cancelar</button><button class="confirm" type="submit">Entrar</button></div>
+        </form>
+      </dialog>
+      <dialog id="admin-panel-dialog" class="pixel-dialog">
+        <section class="dialog-card admin-card">
+          <p class="dialog-kicker">Herramientas de prueba · F2</p>
+          <h2>Panel admin</h2>
+          <p id="admin-status" role="status">Selecciona una acción.</p>
+          <div class="admin-actions">
+            <button id="admin-add-coins" type="button">+100 monedas</button>
+            <button id="admin-invincibility" type="button">Invencibilidad 5 s</button>
+            <button id="admin-test-boss" type="button">Probar jefe</button>
+            <button id="admin-close" type="button">Cerrar</button>
+          </div>
+        </section>
+      </dialog>
     </main>
     <noscript>UFO RUN necesita JavaScript para funcionar.</noscript>
   </body>

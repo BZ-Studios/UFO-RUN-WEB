@@ -42,12 +42,16 @@
   const ASTEROID_IMAGE_NAMES = ["asteroid", "asteroid2"];
   const COIN_AD_REWARD = 50;
   const DAILY_COIN_AD_LIMIT = 10;
-  const SCORE_AUDIO_OFFSET_SECONDS = 0.045;
+  const SCORE_AUDIO_FALLBACK_OFFSET_SECONDS = 0.12;
+  const SCORE_AUDIO_SILENCE_THRESHOLD = 0.012;
   const SPECIAL_SPAWN_COOLDOWN_FRAMES = 48;
   const BOSS_TRIGGER_SCORE = 100;
+  const BOSS_WARNING_FRAMES = FPS * 3;
   const BOSS_DURATION_FRAMES = FPS * 30;
   const BOSS_SCORE_REWARD = 10;
   const BOSS_COIN_REWARD = 50;
+  const NAME_CHANGE_COST = 100;
+  const ADMIN_PASSWORD = "9701";
   const DIFFICULTIES = {
     easy: { name: "Fácil", description: "Sin asteroides, velocidad y aumento más suaves",
       initialSpeed: 2.35, initialFrequency: 110, progressionEvery: 6,
@@ -138,6 +142,7 @@
   const invincibilitySound = new Audio("src/musica/sonido_invencibilidad.mp3");
   let scoreAudioContext = null;
   let scoreAudioBuffer = null;
+  let scoreAudioStartOffset = SCORE_AUDIO_FALLBACK_OFFSET_SECONDS;
 
   backgroundMusic.loop = true;
   backgroundMusic.volume = 0.4;
@@ -203,10 +208,21 @@
     return result;
   }
 
+  function normalizeBestScores(value, legacyBestScore = 0) {
+    const result = { easy: 0, normal: 0, hard: 0 };
+    for (const difficulty of Object.keys(DIFFICULTIES)) {
+      result[difficulty] = Math.max(0, Math.trunc(Number(value?.[difficulty]) || 0));
+    }
+    if (!value || typeof value !== "object") {
+      result.normal = Math.max(0, Math.trunc(Number(legacyBestScore) || 0));
+    }
+    return result;
+  }
+
   function loadProfile() {
     const fallback = {
       credits: 0,
-      bestScore: 0,
+      bestScores: normalizeBestScores(),
       ownedSkins: ["classic"],
       selectedSkin: "classic",
       soundEnabled: true,
@@ -232,7 +248,7 @@
       const selectedSkin = ownedSkins.includes(stored.selectedSkin) ? stored.selectedSkin : "classic";
       return {
         credits: Math.max(0, Math.trunc(Number(stored.credits) || 0)),
-        bestScore: Math.max(0, Math.trunc(Number(stored.bestScore) || 0)),
+        bestScores: normalizeBestScores(stored.bestScores, stored.bestScore),
         ownedSkins,
         selectedSkin,
         soundEnabled: stored.soundEnabled !== false,
@@ -314,6 +330,10 @@
   let bossVolleyCount = 0;
   let bossProjectiles = [];
   let feedback = [];
+  let flightStarted = false;
+  let bossWarningActive = false;
+  let bossWarningFrames = 0;
+  let adminUnlocked = false;
   const spriteCache = new Map();
 
   const interfaceElement = document.getElementById("interface");
@@ -453,6 +473,7 @@
     document.getElementById("authors-footer").hidden = state !== "gameover";
     document.getElementById("invincible-label").hidden = state !== "playing" || !invincible;
     document.getElementById("boss-hud").hidden = state !== "playing" || !bossActive;
+    document.getElementById("flight-start-prompt").hidden = state !== "playing" || flightStarted;
     gameHud.hidden = state !== "playing";
     interfaceElement.hidden = !screenElements[state];
     for (const [name, screen] of Object.entries(screenElements)) {
@@ -466,7 +487,8 @@
       element.textContent = String(profile.credits);
     });
     document.querySelectorAll("[data-best-score]").forEach((element) => {
-      element.textContent = String(profile.bestScore);
+      const difficulty = ["playing", "gameover"].includes(state) ? currentDifficulty : profile.difficulty;
+      element.textContent = String(profile.bestScores[difficulty]);
     });
     const skin = selectedSkin();
     document.getElementById("equipped-preview").src = imageSources[skin.imageName];
@@ -502,6 +524,7 @@
     document.getElementById("difficulty-description").textContent = DIFFICULTIES[profile.difficulty].description;
     const playerNameInput = document.getElementById("player-name");
     if (playerNameInput.value !== profile.playerName) playerNameInput.value = profile.playerName;
+    playerNameInput.readOnly = true;
     document.querySelectorAll("[data-ranking-difficulty]").forEach((button) => {
       button.setAttribute("aria-selected", String(button.dataset.rankingDifficulty === rankingDifficulty));
     });
@@ -601,10 +624,29 @@
       const response = await window.fetch("src/musica/sonido_puntaje.mp3");
       if (!response.ok) return;
       scoreAudioBuffer = await scoreAudioContext.decodeAudioData(await response.arrayBuffer());
+      scoreAudioStartOffset = findAudioStartOffset(scoreAudioBuffer);
     } catch (_error) {
       scoreAudioContext = null;
       scoreAudioBuffer = null;
     }
+  }
+
+  function findAudioStartOffset(buffer) {
+    if (!buffer || !Number.isFinite(buffer.sampleRate) || !buffer.numberOfChannels) {
+      return SCORE_AUDIO_FALLBACK_OFFSET_SECONDS;
+    }
+    let firstAudibleSample = buffer.length;
+    for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
+      const samples = buffer.getChannelData(channel);
+      for (let index = 0; index < samples.length; index += 1) {
+        if (Math.abs(samples[index]) >= SCORE_AUDIO_SILENCE_THRESHOLD) {
+          firstAudibleSample = Math.min(firstAudibleSample, index);
+          break;
+        }
+      }
+    }
+    if (firstAudibleSample === buffer.length) return SCORE_AUDIO_FALLBACK_OFFSET_SECONDS;
+    return Math.max(0, firstAudibleSample / buffer.sampleRate - 0.004);
   }
 
   function applyBackground() {
@@ -644,13 +686,13 @@
       gain.gain.value = scoreSound.volume;
       source.connect(gain);
       gain.connect(scoreAudioContext.destination);
-      source.start(0, Math.min(SCORE_AUDIO_OFFSET_SECONDS, scoreAudioBuffer.duration / 4));
+      source.start(0, Math.min(scoreAudioStartOffset, scoreAudioBuffer.duration / 4));
       return;
     }
     // Fallback para navegadores sin Web Audio: reutiliza el audio ya precargado.
     stopAudio(scoreSound, true);
     try {
-      scoreSound.currentTime = SCORE_AUDIO_OFFSET_SECONDS;
+      scoreSound.currentTime = SCORE_AUDIO_FALLBACK_OFFSET_SECONDS;
     } catch (_error) {
       // El archivo todavía puede estar cargándose.
     }
@@ -709,6 +751,121 @@
     return true;
   }
 
+  function openDialog(dialog) {
+    if (dialog.open) return;
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.open = true;
+  }
+
+  function closeDialog(dialog) {
+    if (typeof dialog.close === "function") dialog.close();
+    else dialog.open = false;
+  }
+
+  function beginNameEdit() {
+    const error = document.getElementById("name-edit-error");
+    if (profile.credits < NAME_CHANGE_COST) {
+      error.textContent = `Necesitas ${NAME_CHANGE_COST} monedas para cambiar el nombre.`;
+      error.hidden = false;
+      openDialog(document.getElementById("name-edit-dialog"));
+      return false;
+    }
+    const input = document.getElementById("new-player-name");
+    input.value = profile.playerName;
+    error.hidden = true;
+    openDialog(document.getElementById("name-edit-dialog"));
+    window.setTimeout(() => input.focus(), 0);
+    return true;
+  }
+
+  function confirmNameEdit(rawName) {
+    const input = document.getElementById("new-player-name");
+    const error = document.getElementById("name-edit-error");
+    const nextName = cleanPlayerName(rawName).toUpperCase();
+    if (!String(rawName || "").trim()) {
+      error.textContent = "Escribe un nombre válido.";
+      error.hidden = false;
+      return false;
+    }
+    if (nextName === profile.playerName) {
+      error.textContent = "Escribe un nombre diferente.";
+      error.hidden = false;
+      return false;
+    }
+    if (profile.credits < NAME_CHANGE_COST) {
+      error.textContent = `Necesitas ${NAME_CHANGE_COST} monedas.`;
+      error.hidden = false;
+      return false;
+    }
+    profile.credits -= NAME_CHANGE_COST;
+    profile.playerName = nextName;
+    profile.playerNameConfirmed = true;
+    input.value = nextName;
+    saveProfile();
+    closeDialog(document.getElementById("name-edit-dialog"));
+    syncInterface();
+    return true;
+  }
+
+  function openAdmin() {
+    if (adminUnlocked) {
+      document.getElementById("admin-status").textContent = "Selecciona una acción.";
+      openDialog(document.getElementById("admin-panel-dialog"));
+      return;
+    }
+    const password = document.getElementById("admin-password");
+    password.value = "";
+    document.getElementById("admin-password-error").hidden = true;
+    openDialog(document.getElementById("admin-login-dialog"));
+    window.setTimeout(() => password.focus(), 0);
+  }
+
+  function unlockAdmin(rawPassword) {
+    if (String(rawPassword) !== ADMIN_PASSWORD) {
+      document.getElementById("admin-password-error").hidden = false;
+      return false;
+    }
+    adminUnlocked = true;
+    closeDialog(document.getElementById("admin-login-dialog"));
+    openAdmin();
+    return true;
+  }
+
+  function adminAddCoins() {
+    if (!adminUnlocked) return false;
+    profile.credits += 100;
+    saveProfile();
+    syncInterface();
+    document.getElementById("admin-status").textContent = "+100 monedas agregadas.";
+    return true;
+  }
+
+  function adminEnableInvincibility() {
+    if (!adminUnlocked || state !== "playing") {
+      document.getElementById("admin-status").textContent = "Inicia una partida para activar la invencibilidad.";
+      return false;
+    }
+    invincible = true;
+    invincibleTime = 0;
+    syncInvincibilityDuration();
+    playAudio(invincibilitySound, true);
+    syncInterface();
+    document.getElementById("admin-status").textContent = "Invencibilidad activada.";
+    return true;
+  }
+
+  function adminTestBoss() {
+    if (!adminUnlocked || state !== "playing" || bossActive || bossWarningActive || bossCompleted) {
+      document.getElementById("admin-status").textContent = "Inicia una partida sin un jefe activo.";
+      return false;
+    }
+    score = BOSS_TRIGGER_SCORE;
+    flightStarted = true;
+    startBossWarning();
+    document.getElementById("admin-status").textContent = "Prueba de jefe iniciada.";
+    return true;
+  }
+
   function stopAudio(audio, rewind = false) {
     audio.pause();
     if (rewind) {
@@ -730,6 +887,7 @@
 
     ufoY = HEIGHT / 2;
     jumpVelocity = 0;
+    flightStarted = false;
     spikeCounter = 0;
     currentDifficulty = profile.difficulty;
     const difficulty = DIFFICULTIES[currentDifficulty];
@@ -761,6 +919,8 @@
     specialSpawnCooldown = 0;
     asteroids = [];
     bossActive = false;
+    bossWarningActive = false;
+    bossWarningFrames = 0;
     bossCompleted = false;
     bossTimeFrames = 0;
     bossX = WIDTH;
@@ -920,6 +1080,7 @@
     continueAdMessage = "Continuación utilizada en esta partida";
     ufoY = HEIGHT / 2 - UFO_HEIGHT / 2;
     jumpVelocity = 0;
+    flightStarted = true;
     const safeRight = UFO_X + UFO_WIDTH + SPIKE_WIDTH;
     spikes = spikes.filter((spike) => spike.topX > safeRight);
     asteroids = asteroids.filter((asteroid) => asteroid.x > safeRight);
@@ -952,6 +1113,10 @@
 
   function jump() {
     if (state === "playing") {
+      if (!flightStarted) {
+        flightStarted = true;
+        syncInterface();
+      }
       jumpVelocity = JUMP_IMPULSE;
     }
   }
@@ -1018,7 +1183,7 @@
     currentPlanet = planetSprites[Math.floor(Math.random() * planetSprites.length)];
     planetX = spawnFromRight(PLANET_SIZE);
     planetY = mobileLayoutQuery.matches ? randomScreenY(PLANET_SIZE) : collectibleY(PLANET_SIZE);
-    planetVelocityY = (Math.random() < 0.5 ? -1 : 1) * randomBetween(0.6, 1);
+    planetVelocityY = 0;
     planetActive = true;
     planetPending = false;
   }
@@ -1212,7 +1377,7 @@
     lastReward = Math.max(0, score - creditedScore);
     profile.credits += lastReward;
     creditedScore += lastReward;
-    profile.bestScore = Math.max(profile.bestScore, score);
+    profile.bestScores[currentDifficulty] = Math.max(profile.bestScores[currentDifficulty], score);
     recordRankingScore();
     saveProfile();
     state = "gameover";
@@ -1238,9 +1403,26 @@
     return { width, height: width * aspect };
   }
 
+  function startBossWarning() {
+    if (bossWarningActive || bossActive || bossCompleted || score < BOSS_TRIGGER_SCORE) return false;
+    bossWarningActive = true;
+    bossWarningFrames = 0;
+    powerupActive = false;
+    planetActive = false;
+    asteroids = [];
+    starPending = false;
+    planetPending = false;
+    asteroidPending = false;
+    specialSpawnCooldown = 0;
+    addFeedback("ALERTA", WIDTH / 2, HEIGHT * 0.35, "#ff5b69", BOSS_WARNING_FRAMES);
+    return true;
+  }
+
   function startBossBattle() {
     if (bossActive || bossCompleted || score < BOSS_TRIGGER_SCORE) return false;
     const dimensions = bossDimensions();
+    bossWarningActive = false;
+    bossWarningFrames = 0;
     bossActive = true;
     bossTimeFrames = 0;
     bossX = WIDTH + 32;
@@ -1263,7 +1445,21 @@
   }
 
   function checkBossTrigger() {
-    if (!bossCompleted && !bossActive && score >= BOSS_TRIGGER_SCORE) startBossBattle();
+    if (!bossCompleted && !bossActive && !bossWarningActive && score >= BOSS_TRIGGER_SCORE) startBossWarning();
+  }
+
+  function updateBossWarning(ufoRect, speedMultiplier) {
+    let hit = false;
+    for (const spike of spikes) {
+      spike.topX -= spikeSpeed * speedMultiplier * WIDTH / 800;
+      spike.bottomX -= spikeSpeed * speedMultiplier * WIDTH / 800;
+      if (!invincible && (opaqueOverlap(ufoRect, spriteRect(getSprite("spikeTop"), spike.topX, spike.topY)) ||
+        opaqueOverlap(ufoRect, spriteRect(getSprite("spikeBottom"), spike.bottomX, spike.bottomY)))) hit = true;
+    }
+    spikes = spikes.filter((spike) => spike.topX + SPIKE_WIDTH > 0);
+    bossWarningFrames += 1;
+    if (bossWarningFrames >= BOSS_WARNING_FRAMES && !hit) startBossBattle();
+    return hit;
   }
 
   function createBossProjectile(targetY) {
@@ -1351,11 +1547,18 @@
     const difficulty = DIFFICULTIES[currentDifficulty];
     const portraitSpeedMultiplier = mobilePortraitQuery.matches
       ? difficulty.mobilePortraitSpeedMultiplier : 1;
+    if (!flightStarted) return;
     if (specialSpawnCooldown > 0) specialSpawnCooldown -= 1;
     jumpVelocity += GRAVITY;
     ufoY += jumpVelocity;
     const ufoRect = spriteRect(getUfoSprite(), UFO_X, ufoY);
     let diedThisFrame = ufoRect.y < 0 || ufoRect.y + ufoRect.height > HEIGHT;
+
+    if (bossWarningActive) {
+      diedThisFrame = updateBossWarning(ufoRect, portraitSpeedMultiplier) || diedThisFrame;
+      finishGameplayUpdate(diedThisFrame);
+      return;
+    }
 
     if (bossActive) {
       diedThisFrame = updateBossBattle(ufoRect) || diedThisFrame;
@@ -1385,25 +1588,30 @@
         score += 1;
         playScoreSound();
         checkBossTrigger();
-        if (!bossActive && passedObstacles < 44 && passedObstacles % difficulty.progressionEvery === 0) {
+        if (!bossActive && !bossWarningActive && passedObstacles < 44 &&
+          passedObstacles % difficulty.progressionEvery === 0) {
           spikeSpeed += difficulty.speedIncrement;
           spikeFrequency = Math.max(48, spikeFrequency - difficulty.frequencyDecrease);
         }
-        if (!bossActive && passedObstacles >= nextPlanetAt) {
+        if (!bossActive && !bossWarningActive && passedObstacles >= nextPlanetAt) {
           planetPending = true;
           nextPlanetAt += PLANET_OBSTACLE_INTERVAL;
         }
-        if (!bossActive && passedObstacles >= nextStarAt) {
+        if (!bossActive && !bossWarningActive && passedObstacles >= nextStarAt) {
           starPending = true;
           nextStarAt += STAR_OBSTACLE_INTERVAL;
         }
-        if (!bossActive && difficulty.asteroidInterval && passedObstacles >= nextAsteroidAt) {
+        if (!bossActive && !bossWarningActive && difficulty.asteroidInterval && passedObstacles >= nextAsteroidAt) {
           asteroidPending = true;
           nextAsteroidAt += difficulty.asteroidInterval;
         }
       }
     }
     spikes = bossActive ? [] : remainingSpikes;
+    if (bossWarningActive) {
+      finishGameplayUpdate(diedThisFrame);
+      return;
+    }
     if (bossActive) {
       diedThisFrame = updateBossBattle(ufoRect) || diedThisFrame;
       finishGameplayUpdate(diedThisFrame);
@@ -1431,11 +1639,7 @@
     }
 
     if (planetActive) {
-      const planet = { x: planetX, y: planetY, velocityY: planetVelocityY };
-      moveFlyingItem(planet, PLANET_SIZE, spikeSpeed * portraitSpeedMultiplier);
-      planetX = planet.x;
-      planetY = planet.y;
-      planetVelocityY = planet.velocityY;
+      planetX -= spikeSpeed * portraitSpeedMultiplier * WIDTH / 800;
       if (opaqueOverlap(ufoRect, spriteRect(getPlanetSprite(), planetX, planetY))) {
         score += 1;
         playScoreSound();
@@ -1501,6 +1705,29 @@
       context.fillRect(x + Math.floor(size / 2) - 2, y + Math.floor(size / 2) - 2, 4, 4);
       context.restore();
     }
+  }
+
+  function drawBossWarning() {
+    if (!bossWarningActive) return;
+    const pulse = 0.16 + Math.abs(Math.sin(bossWarningFrames / 10)) * 0.16;
+    const seconds = Math.max(1, Math.ceil((BOSS_WARNING_FRAMES - bossWarningFrames) / FPS));
+    context.save();
+    context.fillStyle = `rgba(110,0,18,${pulse})`;
+    context.fillRect(0, 0, WIDTH, HEIGHT);
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.shadowColor = "#000";
+    context.shadowBlur = 8;
+    context.fillStyle = "#ff5b69";
+    context.font = `bold ${Math.max(28, Math.min(54, WIDTH * 0.065))}px "UFO Run", monospace`;
+    context.fillText("ALERTA", WIDTH / 2, HEIGHT * 0.37);
+    context.fillStyle = "#eef7ff";
+    context.font = `${Math.max(14, Math.min(24, WIDTH * 0.027))}px "UFO Run", monospace`;
+    context.fillText("JEFE APROXIMANDOSE", WIDTH / 2, HEIGHT * 0.47);
+    context.fillStyle = "#ffd648";
+    context.font = `${Math.max(22, Math.min(38, WIDTH * 0.045))}px "UFO Run", monospace`;
+    context.fillText(String(seconds), WIDTH / 2, HEIGHT * 0.57);
+    context.restore();
   }
 
   function drawWorld() {
@@ -1569,6 +1796,7 @@
     }
     if (state === "playing") {
       drawFeedback();
+      drawBossWarning();
       const scoreLabel = "Puntaje: " + score;
       document.getElementById("invincible-label").hidden = !invincible;
       if (gameHud.textContent !== scoreLabel) gameHud.textContent = scoreLabel;
@@ -1607,6 +1835,11 @@
   });
 
   window.addEventListener("keydown", (event) => {
+    if (event.code === "F2") {
+      event.preventDefault();
+      openAdmin();
+      return;
+    }
     // Enter/Espacio activan el botón enfocado; Escape mantiene la navegación global.
     if ((event.code === "Space" || event.code === "Enter") &&
       event.target instanceof HTMLElement && event.target.closest("button")) return;
@@ -1651,6 +1884,13 @@
     "sound-button": toggleSound,
     "fullscreen-button": toggleFullscreen,
     "skip-intro-button": finishIntro,
+    "edit-name-button": beginNameEdit,
+    "cancel-name-edit": () => closeDialog(document.getElementById("name-edit-dialog")),
+    "cancel-admin-login": () => closeDialog(document.getElementById("admin-login-dialog")),
+    "admin-add-coins": adminAddCoins,
+    "admin-invincibility": adminEnableInvincibility,
+    "admin-test-boss": adminTestBoss,
+    "admin-close": () => closeDialog(document.getElementById("admin-panel-dialog")),
   })) {
     document.getElementById(id).addEventListener("click", handler);
   }
@@ -1660,11 +1900,13 @@
   document.querySelectorAll("[data-ranking-difficulty]").forEach((button) => {
     button.addEventListener("click", () => selectRankingDifficulty(button.dataset.rankingDifficulty));
   });
-  document.getElementById("player-name").addEventListener("change", (event) => {
-    profile.playerName = cleanPlayerName(event.target.value).toUpperCase();
-    profile.playerNameConfirmed = true;
-    saveProfile();
-    syncInterface();
+  document.getElementById("name-edit-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    confirmNameEdit(document.getElementById("new-player-name").value);
+  });
+  document.getElementById("admin-login-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    unlockAdmin(document.getElementById("admin-password").value);
   });
   document.getElementById("player-name-form").addEventListener("submit", (event) => {
     event.preventDefault();

@@ -45,6 +45,7 @@ p, h1, h2, figure { margin: 0; }
 .interface-footer { flex-shrink: 0; text-align: center; padding-top: 10px; }
 .game-status { position: absolute; top: max(52px,calc(env(safe-area-inset-top) + 38px)); left: max(20px,env(safe-area-inset-left)); pointer-events: none; font-size: 12px; color: #ffd648; text-shadow: 0 2px 5px #000; }
 .game-hud { position: absolute; top: max(16px,env(safe-area-inset-top)); left: max(20px,env(safe-area-inset-left)); pointer-events: none; color: var(--cyan); font-size: clamp(20px,3vw,30px); text-shadow: 0 2px 5px #000; }
+.flight-start-prompt { position: absolute; z-index: 5; left: 50%; bottom: max(9vh,calc(env(safe-area-inset-bottom) + 30px)); width: min(86vw,560px); transform: translateX(-50%); padding: 14px 18px; border: 2px solid var(--cyan); border-radius: 12px; background: rgba(4,10,27,.92); color: #eef7ff; text-align: center; font-size: clamp(10px,1.8vw,15px); line-height: 1.6; pointer-events: none; box-shadow: 0 0 20px rgba(80,220,255,.22); }
 .boss-hud { position: absolute; z-index: 4; top: max(17px,env(safe-area-inset-top)); left: 50%; width: min(45vw,520px); transform: translateX(-50%); pointer-events: none; filter: drop-shadow(0 4px 8px #000); }
 .boss-hud-heading { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 7px; color: #f2eaff; font-size: clamp(9px,1.2vw,13px); letter-spacing: .08em; text-transform: uppercase; }
 .boss-hud-heading strong { color: #50dcff; }
@@ -127,9 +128,27 @@ h2 { font-size: clamp(26px,4vw,44px); line-height: 1.2; }
 .help-boundaries { display: flex; flex-direction: column; align-items: center; justify-content: space-between; width: 100px; height: 100px; padding: 8px 0; color: #eef7ff; font-size: 10px; }
 .help-boundaries span { display: block; width: 100%; border-top: 5px solid #ff5b69; box-shadow: 0 0 8px rgba(255,91,105,.55); }
 .ranking-panel { width: min(100%,720px); margin: auto; padding: clamp(18px,3vw,32px); border: 2px solid var(--border); border-radius: 18px; background: rgba(7,14,34,.96); box-shadow: 0 0 30px rgba(25,90,255,.25); }
-.pilot-name { display: grid; grid-template-columns: auto minmax(150px,280px); align-items: center; justify-content: center; gap: 14px; margin-bottom: 18px; color: #9eb2d7; font-size: 10px; }
+.pilot-name { display: grid; grid-template-columns: auto minmax(150px,340px); align-items: center; justify-content: center; gap: 14px; margin-bottom: 18px; color: #9eb2d7; font-size: 10px; }
+.pilot-name-control { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; }
 .pilot-name input { width: 100%; min-height: 40px; border: 2px solid var(--border); border-radius: 9px; background: #050b1d; padding: 8px 12px; color: #fff; font: inherit; text-transform: uppercase; }
+.pilot-name input[readonly] { color: #bed0ef; cursor: default; }
 .pilot-name input:focus { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.pilot-name button { min-width: 78px; border: 2px solid #ffd648; border-radius: 9px; background: rgba(69,49,7,.9); color: #ffd648; font-size: 13px; }
+.pixel-dialog { width: min(92vw,560px); max-height: min(90dvh,720px); padding: 0; border: 2px solid var(--cyan); border-radius: 16px; background: #071021; color: #eef7ff; box-shadow: 0 0 42px rgba(80,220,255,.32); }
+.pixel-dialog::backdrop { background: rgba(0,3,12,.82); backdrop-filter: blur(4px); }
+.dialog-card { display: grid; gap: 16px; padding: clamp(22px,5vw,38px); }
+.dialog-card h2 { color: var(--cyan); font-size: clamp(24px,5vw,36px); }
+.dialog-card > p:not(.dialog-kicker):not(.dialog-error) { color: #9eb2d7; font-size: 10px; line-height: 1.7; }
+.dialog-kicker { color: #ffd648; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.dialog-card label { color: #bdcae4; font-size: 10px; }
+.dialog-card input { width: 100%; min-height: 48px; border: 2px solid var(--border); border-radius: 9px; background: #030817; padding: 10px 12px; color: #fff; font: inherit; text-transform: uppercase; }
+.dialog-card input:focus { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.dialog-error { color: #ff7782; font-size: 10px; line-height: 1.5; }
+.dialog-actions, .admin-actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.dialog-actions button, .admin-actions button { min-height: 48px; border: 2px solid var(--border); border-radius: 9px; background: #09132d; padding: 9px; font-size: 11px; }
+.dialog-actions .confirm, .admin-actions button:not(:last-child) { border-color: var(--cyan); color: var(--cyan); }
+.admin-card { min-height: 330px; }
+.admin-actions { margin-top: 6px; }
 .ranking-tabs { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 16px; }
 .ranking-table-wrap { overflow-x: auto; }
 .ranking-panel table { width: 100%; border-collapse: collapse; font-size: 12px; }

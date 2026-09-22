@@ -17,6 +17,7 @@ function game(width = 390, height = 844, mobile = true) {
   const nodes = new Map();
   const element = () => ({ hidden: true, textContent: "", value: "", dataset: {}, style: { setProperty() {} },
     classList: { toggle() {} }, setAttribute() {}, addEventListener() {}, append() {}, replaceChildren() {}, focus() {},
+    open: false, readOnly: false, showModal() { this.open = true; }, close() { this.open = false; },
     getBoundingClientRect: () => ({ width, height }), getContext: () => ({ setTransform() {} }) });
   const document = { getElementById: (id) => {
     if (!nodes.has(id)) nodes.set(id, element());
@@ -50,13 +51,16 @@ function game(width = 390, height = 844, mobile = true) {
     getSprite = (name) => fixtureSprite(name.startsWith("spike") ? 100 : name.startsWith("asteroid") ? 64 : 50,
       name.startsWith("spike") ? SPIKE_HEIGHT : name.startsWith("asteroid") ? 64 : 50);
     planetSprites = [{ imageName: "test" }];
-    buildShopInterface(); resizeGame(); startGame();
+    buildShopInterface(); resizeGame(); startGame(); flightStarted = true;
     globalThis.api = {
-      resizeGame, startGame, createSpikes, activateRandomPlanet, activateStar, activateAsteroid,
+      resizeGame, startGame: () => { startGame(); flightStarted = true; },
+      beginWaiting: () => { startGame(); }, jump,
+      createSpikes, activateRandomPlanet, activateStar, activateAsteroid,
       moveDiagonal, moveFlyingItem, showShop, showRanking, selectDifficulty, confirmPlayerName,
-      startBossBattle, finishBossBattle,
+      startBossBattle, startBossWarning, finishBossBattle,
+      beginNameEdit, confirmNameEdit, unlockAdmin, adminAddCoins, adminEnableInvincibility, adminTestBoss,
       handleCoinAd, handleContinueAd,
-      opaqueOverlap, spriteRect, finishFrameAsGameOver, updateGame,
+      opaqueOverlap, spriteRect, finishFrameAsGameOver, updateGame, findAudioStartOffset,
       tick: () => { ufoY = HEIGHT / 2; jumpVelocity = -GRAVITY; updateGame(); },
       safeTick: () => { ufoY = HEIGHT / 2; jumpVelocity = -GRAVITY; invincible = true;
         invincibleTime = 0; updateGame(); },
@@ -65,9 +69,11 @@ function game(width = 390, height = 844, mobile = true) {
         specialSpawnCooldown = 0; asteroids = []; },
       expirePlanet: () => { planetX = -PLANET_SIZE - 1; },
       setScore: (value) => { score = value; },
+      setCredits: (value) => { profile.credits = value; syncInterface(); },
       bossProjectileAtPlayer: () => { bossProjectiles = [{ x: UFO_X, y: HEIGHT / 2,
         size: 22, velocityX: 0, velocityY: 0 }]; },
       bossNearEnd: () => { bossTimeFrames = BOSS_DURATION_FRAMES - 1; bossProjectiles = []; },
+      bossWarningNearEnd: () => { bossWarningFrames = BOSS_WARNING_FRAMES - 1; },
       passed: (count) => { passedObstacles = count - 1;
         spikes = [{ topX: UFO_X - 102, bottomX: UFO_X - 102,
           topY: -SPIKE_HEIGHT, bottomY: HEIGHT, counted: false }]; },
@@ -81,7 +87,7 @@ function game(width = 390, height = 844, mobile = true) {
       effectAtEnd: () => { invincible = true; invincibleTime = invincibilityDurationFrames - 1; },
       starFar: () => { powerupActive = true; powerupX = WIDTH - 50;
         powerupY = 180; powerupVelocityY = 1; },
-      read: () => ({ state, WIDTH, HEIGHT, spikeHeight: SPIKE_HEIGHT, score, credits: profile.credits,
+      read: () => ({ state, WIDTH, HEIGHT, ufoY, spikeHeight: SPIKE_HEIGHT, score, credits: profile.credits,
         invincible, invincibleTime, invincibilityDurationFrames, continueUsed,
         invincibilityCountdown: Math.max(1, Math.ceil((invincibilityDurationFrames - invincibleTime) / FPS)),
         planetActive, planetX, planetY,
@@ -92,8 +98,10 @@ function game(width = 390, height = 844, mobile = true) {
         coinAdsToday: profile.coinAdsToday, difficulty: currentDifficulty,
         selectedDifficulty: profile.difficulty, spikeSpeed, spikeFrequency,
         playerName: profile.playerName, playerNameConfirmed: profile.playerNameConfirmed,
+        bestScores: { ...profile.bestScores }, flightStarted,
         starPending, planetPending, asteroidPending, specialSpawnCooldown,
-        bossActive, bossCompleted, bossTimeFrames, bossDurationFrames: BOSS_DURATION_FRAMES,
+        bossActive, bossWarningActive, bossWarningFrames, bossWarningDurationFrames: BOSS_WARNING_FRAMES,
+        bossCompleted, bossTimeFrames, bossDurationFrames: BOSS_DURATION_FRAMES,
         bossProjectiles: bossProjectiles.length,
         portraitSpeedMultiplier: DIFFICULTIES[currentDifficulty].mobilePortraitSpeedMultiplier,
         portraitIntervalMultiplier: DIFFICULTIES[currentDifficulty].mobilePortraitIntervalMultiplier,
@@ -221,6 +229,9 @@ test("Las tres dificultades aplican sus reglas de velocidad y asteroides", () =>
 test("El sonido de puntuación usa inmediatamente el audio precargado", () => {
   const g = game(); g.api.passed(1); g.api.tick();
   assert.equal(g.api.read().score, 1); assert.equal(g.api.read().scoreSoundPlays, 1);
+  const samples = new Float32Array(1000); samples[240] = 0.5;
+  assert.equal(g.api.findAudioStartOffset({ sampleRate: 1000, numberOfChannels: 1, length: 1000,
+    getChannelData: () => samples }), 0.236);
 });
 
 test("El nombre se solicita una vez y queda confirmado en el perfil", () => {
@@ -230,6 +241,29 @@ test("El nombre se solicita una vez y queda confirmado en el perfil", () => {
   assert.equal(g.api.confirmPlayerName("Luís_27"), true);
   assert.equal(g.api.read().playerName, "LUÍS_27");
   assert.equal(g.api.read().playerNameConfirmed, true);
+});
+
+test("El nombre queda bloqueado y cambiarlo cuesta 100 monedas", () => {
+  const g = game();
+  assert.equal(g.nodes.get("player-name").readOnly, true);
+  assert.equal(g.api.beginNameEdit(), false);
+  g.api.setCredits(120);
+  assert.equal(g.api.beginNameEdit(), true);
+  assert.equal(g.api.confirmNameEdit("Nova"), true);
+  assert.equal(g.api.read().playerName, "NOVA");
+  assert.equal(g.api.read().credits, 20);
+});
+
+test("La partida espera el primer impulso antes de activar la física", () => {
+  const g = game(); g.api.beginWaiting();
+  const initial = g.api.read();
+  for (let index = 0; index < 30; index += 1) g.api.updateGame();
+  assert.equal(g.api.read().ufoY, initial.ufoY);
+  assert.equal(g.api.read().positions.length, 0);
+  assert.equal(g.api.read().flightStarted, false);
+  g.api.jump(); g.api.updateGame();
+  assert.equal(g.api.read().flightStarted, true);
+  assert.notEqual(g.api.read().ufoY, initial.ufoY);
 });
 
 test("Recoger planeta suma +1 con animación y conserva monedas previas", () => {
@@ -309,11 +343,17 @@ test("La ayuda, Hangar y ranking por dificultad están disponibles", () => {
   }
 });
 
-test("El jefe aparece a los 100 puntos y suspende todos los pinchos", () => {
+test("El jefe avisa durante 3 segundos antes de aparecer y suspende los pinchos", () => {
   const g = game();
   g.api.setScore(99); g.api.passed(100); g.api.tick();
   let state = g.api.read();
   assert.equal(state.score, 100);
+  assert.equal(state.bossWarningActive, true);
+  assert.equal(state.bossActive, false);
+  assert.equal(state.bossWarningDurationFrames, 3 * 80);
+  g.api.bossWarningNearEnd(); g.api.safeTick();
+  state = g.api.read();
+  assert.equal(state.bossWarningActive, false);
   assert.equal(state.bossActive, true);
   assert.equal(state.positions.length, 0);
   assert.equal(state.bossDurationFrames, 30 * 80);
@@ -349,6 +389,27 @@ test("El ranking conserva el mejor resultado local de cada partida", () => {
   assert.equal(ranking[0].score, 1);
 });
 
+test("El mejor puntaje local se guarda por separado en cada dificultad", () => {
+  const g = game();
+  assert.equal(JSON.stringify(g.api.read().bestScores), JSON.stringify({ easy: 0, normal: 16, hard: 0 }));
+  g.api.selectDifficulty("easy"); g.api.startGame();
+  g.api.planetAtPlayer(); g.api.tick(); g.api.finishFrameAsGameOver();
+  assert.equal(JSON.stringify(g.api.read().bestScores), JSON.stringify({ easy: 1, normal: 16, hard: 0 }));
+});
+
+test("El panel F2 exige 9701 y ofrece herramientas de prueba", () => {
+  const g = game();
+  assert.equal(g.api.unlockAdmin("1234"), false);
+  assert.equal(g.api.adminAddCoins(), false);
+  assert.equal(g.api.unlockAdmin("9701"), true);
+  assert.equal(g.api.adminAddCoins(), true);
+  assert.equal(g.api.read().credits, 122);
+  assert.equal(g.api.adminEnableInvincibility(), true);
+  assert.equal(g.api.read().invincible, true);
+  assert.equal(g.api.adminTestBoss(), true);
+  assert.equal(g.api.read().bossWarningActive, true);
+});
+
 test("La tienda entrega 50 monedas por anuncio y respeta el máximo diario de 10", async () => {
   const g = game(); g.api.showShop();
   for (let index = 0; index < 11; index += 1) await g.api.handleCoinAd();
@@ -378,11 +439,12 @@ test("El anuncio permite continuar una vez y no duplica monedas ya guardadas", a
   assert.equal(g.api.read().state, "gameover"); assert.equal(g.api.read().credits, 24);
 });
 
-test("En escritorio planeta, estrella y asteroide mantienen movimiento diagonal", () => {
+test("En escritorio los planetas avanzan sólo en X; estrellas y asteroides conservan la diagonal", () => {
   const g = game(1280, 720, false);
   g.api.clear(); g.api.activateRandomPlanet();
   const planetBefore = g.api.read(); g.api.tick(); const planetAfter = g.api.read();
-  assert.notEqual(planetAfter.planetY, planetBefore.planetY);
+  assert.equal(planetAfter.planetY, planetBefore.planetY);
+  assert(planetAfter.planetX < planetBefore.planetX);
   g.api.clear(); g.api.activateStar();
   const starBefore = g.api.read(); g.api.tick(); const starAfter = g.api.read();
   assert.notEqual(starAfter.powerupY, starBefore.powerupY);
