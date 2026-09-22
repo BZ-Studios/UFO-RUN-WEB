@@ -19,6 +19,33 @@ test("La API limpia nombres y valida puntuaciones antes de guardarlas", async ()
   assert.equal(response.payload.error, "Invalid score");
 });
 
+test("La API reconoce las variables con prefijo personalizado creadas por Vercel", () => {
+  const urlKey = "UPSTASH_REDIS_REST_KV_REST_API_URL";
+  const tokenKey = "UPSTASH_REDIS_REST_KV_REST_API_TOKEN";
+  const oldUrl = process.env[urlKey];
+  const oldToken = process.env[tokenKey];
+  const canonicalUrl = process.env.KV_REST_API_URL;
+  const canonicalToken = process.env.KV_REST_API_TOKEN;
+  const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  try {
+    delete process.env.KV_REST_API_URL;
+    delete process.env.KV_REST_API_TOKEN;
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    process.env[urlKey] = "https://prefixed-redis.example";
+    process.env[tokenKey] = "prefixed-token";
+    assert.deepEqual(handler.storageConfig(), {
+      url: "https://prefixed-redis.example", token: "prefixed-token",
+    });
+  } finally {
+    const restore = (key, value) => { if (value === undefined) delete process.env[key]; else process.env[key] = value; };
+    restore(urlKey, oldUrl); restore(tokenKey, oldToken);
+    restore("KV_REST_API_URL", canonicalUrl); restore("KV_REST_API_TOKEN", canonicalToken);
+    restore("UPSTASH_REDIS_REST_URL", upstashUrl); restore("UPSTASH_REDIS_REST_TOKEN", upstashToken);
+  }
+});
+
 test("La API devuelve el top global desde Redis", async (context) => {
   const oldUrl = process.env.KV_REST_API_URL;
   const oldToken = process.env.KV_REST_API_TOKEN;

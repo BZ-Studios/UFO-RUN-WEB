@@ -9,8 +9,10 @@ function cleanName(value) {
 
 function storageConfig() {
   return {
-    url: process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN,
+    url: process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL ||
+      process.env.UPSTASH_REDIS_REST_KV_REST_API_URL,
+    token: process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN ||
+      process.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN,
   };
 }
 
@@ -95,3 +97,4 @@ async function handler(request, response) {
 
 module.exports = handler;
 module.exports.cleanName = cleanName;
+module.exports.storageConfig = storageConfig;

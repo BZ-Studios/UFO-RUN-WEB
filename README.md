@@ -32,7 +32,8 @@ La interfaz no concede premios si todavía no existe un proveedor. Para conectar
 La ruta serverless `api/scores.js` publica y consulta el ranking global. En el proyecto de Vercel conecta una base Redis de Upstash y configura estas variables:
 
 - `KV_REST_API_URL` y `KV_REST_API_TOKEN`, o
-- `UPSTASH_REDIS_REST_URL` y `UPSTASH_REDIS_REST_TOKEN`.
+- `UPSTASH_REDIS_REST_URL` y `UPSTASH_REDIS_REST_TOKEN`, o
+- `UPSTASH_REDIS_REST_KV_REST_API_URL` y `UPSTASH_REDIS_REST_KV_REST_API_TOKEN` cuando la integración de Vercel se conecta con el prefijo `UPSTASH_REDIS_REST`.
 
 Después vuelve a desplegar el proyecto. Si el servicio todavía no está configurado o no responde, el juego usa automáticamente el ranking guardado en el dispositivo. Las puntuaciones se validan en la API y los envíos tienen un límite diario por conexión.
 
