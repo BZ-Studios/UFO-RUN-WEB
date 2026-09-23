@@ -6,11 +6,13 @@ const vm = require("node:vm");
 
 const source = fs.readFileSync(path.join(__dirname, "../js/game.js"), "utf8");
 const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
+const achievementIds = [...source.match(/const ACHIEVEMENTS = \[([\s\S]*?)\n  \];/)[1]
+  .matchAll(/id: "([^"]+)"/g)].map((match) => match[1]);
 const sprite = (width, height) => ({ width, height, mask: new Uint8Array(width * height).fill(1) });
 
 // Aislamos física y estado sin escribir el progreso real del navegador.
 // Las colisiones de transparencia se prueban con máscaras explícitas más abajo.
-function game(width = 390, height = 844, mobile = true) {
+function game(width = 390, height = 844, mobile = true, profileOverrides = {}) {
   let random = 0.2;
   let rewardedAdResult = true;
   const rewardedAdCalls = [];
@@ -41,7 +43,8 @@ function game(width = 390, height = 844, mobile = true) {
     } };
   const scope = { document, Audio, Math: math, performance: { now: () => 0 }, window: browserWindow,
     localStorage: { getItem: () => JSON.stringify({ credits: 22, bestScore: 16,
-      ownedSkins: ["classic"], selectedSkin: "classic" }), setItem() {} },
+      ownedSkins: ["classic"], selectedSkin: "classic", achievements: achievementIds,
+      achievementStats: { gamesStarted: 1 }, ...profileOverrides }), setItem() {} },
     fixtureSprite: sprite };
   const cutoff = source.indexOf('  canvas.addEventListener("pointerdown"');
   assert(cutoff > 0);
@@ -51,13 +54,13 @@ function game(width = 390, height = 844, mobile = true) {
     getSprite = (name) => fixtureSprite(name.startsWith("spike") ? 100 : name.startsWith("asteroid") ? 64 : 50,
       name.startsWith("spike") ? SPIKE_HEIGHT : name.startsWith("asteroid") ? 64 : 50);
     planetSprites = [{ imageName: "test" }];
-    buildShopInterface(); resizeGame(); startGame(); flightStarted = true;
+    buildShopInterface(); buildAchievementsInterface(); resizeGame(); startGame(); flightStarted = true;
     globalThis.api = {
       resizeGame, startGame: () => { startGame(); flightStarted = true; },
       beginWaiting: () => { startGame(); }, jump,
       createSpikes, activateRandomPlanet, activateStar, activateAsteroid,
       moveDiagonal, moveFlyingItem, showShop, showRanking, selectDifficulty, confirmPlayerName,
-      startBossBattle, startBossWarning, finishBossBattle,
+      startBossBattle, startBossWarning, finishBossBattle, pauseGame, resumeGame,
       beginNameEdit, confirmNameEdit, unlockAdmin, adminAddCoins, adminEnableInvincibility, adminTestBoss,
       handleCoinAd, handleContinueAd,
       opaqueOverlap, spriteRect, finishFrameAsGameOver, updateGame, findAudioStartOffset,
@@ -87,7 +90,7 @@ function game(width = 390, height = 844, mobile = true) {
       effectAtEnd: () => { invincible = true; invincibleTime = invincibilityDurationFrames - 1; },
       starFar: () => { powerupActive = true; powerupX = WIDTH - 50;
         powerupY = 180; powerupVelocityY = 1; },
-      read: () => ({ state, WIDTH, HEIGHT, ufoY, spikeHeight: SPIKE_HEIGHT, score, credits: profile.credits,
+      read: () => ({ state, WIDTH, HEIGHT, ufoY, jumpVelocity, spikeHeight: SPIKE_HEIGHT, score, credits: profile.credits,
         invincible, invincibleTime, invincibilityDurationFrames, continueUsed,
         invincibilityCountdown: Math.max(1, Math.ceil((invincibilityDurationFrames - invincibleTime) / FPS)),
         planetActive, planetX, planetY,
@@ -101,11 +104,14 @@ function game(width = 390, height = 844, mobile = true) {
         bestScores: { ...profile.bestScores }, flightStarted,
         starPending, planetPending, asteroidPending, specialSpawnCooldown,
         bossActive, bossWarningActive, bossWarningFrames, bossWarningDurationFrames: BOSS_WARNING_FRAMES,
-        bossCompleted, bossTimeFrames, bossDurationFrames: BOSS_DURATION_FRAMES,
+        bossCompleted, bossDefeatAnimating, bossDefeatFrames, bossTimeFrames,
+        bossDurationFrames: BOSS_DURATION_FRAMES, bossDefeatAnimationFrames: BOSS_DEFEAT_ANIMATION_FRAMES,
         bossProjectiles: bossProjectiles.length,
+        gamePaused, adminInfiniteInvincibility, achievements: [...profile.achievements],
+        achievementStats: { ...profile.achievementStats },
         portraitSpeedMultiplier: DIFFICULTIES[currentDifficulty].mobilePortraitSpeedMultiplier,
         portraitIntervalMultiplier: DIFFICULTIES[currentDifficulty].mobilePortraitIntervalMultiplier,
-        scoreSoundPlays: scoreSound.playCalls,
+        scoreSoundPlays: scoreSound.playCalls, invincibilitySoundPlays: invincibilitySound.playCalls,
         rankings: Object.fromEntries(Object.entries(profile.rankings)
           .map(([key, entries]) => [key, entries.map(item => ({ ...item }))])) }),
     };})();`, scope);
@@ -170,16 +176,17 @@ test("Los planetas aparecen antes y varían su altura", () => {
   assert.notEqual(g.api.read().planetY, first);
 });
 
-test("Estrella cada 12 obstáculos y asteroide cada 10 desfasado 5", () => {
+test("Estrella cada 18 obstáculos y asteroide cada 10 desfasado 5", () => {
   const before = game();
   before.api.passed(4); before.api.tick(); assert.equal(before.api.read().powerupActive, false);
   const firstAsteroid = game();
   firstAsteroid.api.passed(5); firstAsteroid.api.tick();
-  assert.equal(firstAsteroid.api.read().asteroidPending, true); // El planeta del punto 3 entra primero.
+  assert.equal(firstAsteroid.api.read().asteroids, 1);
   assert.equal(firstAsteroid.api.read().nextAsteroidAt, 15);
   const star = game();
-  star.api.passed(12); star.api.tick(); assert.equal(star.api.read().powerupActive, true);
-  assert.equal(star.api.read().nextStarAt, 24);
+  star.api.selectDifficulty("easy"); star.api.startGame();
+  star.api.passed(18); star.api.tick(); assert.equal(star.api.read().powerupActive, true);
+  assert.equal(star.api.read().nextStarAt, 36);
 });
 
 test("Los dos asteroides se intercalan en cada aparición", () => {
@@ -207,9 +214,9 @@ test("Planetas, estrellas y asteroides se ordenan sin aparecer juntos", () => {
   assert.equal(g.api.read().specialSpawnCooldown, 48);
   for (let index = 0; index < 48; index += 1) g.api.tick();
   state = g.api.read();
-  assert.equal(state.powerupActive, true);
-  assert.equal(state.asteroids, 0);
-  assert.equal(state.asteroidPending, true);
+  assert.equal(state.powerupActive, false);
+  assert.equal(state.asteroids, 1);
+  assert.equal(state.starPending, true);
 });
 
 test("Las tres dificultades aplican sus reglas de velocidad y asteroides", () => {
@@ -222,7 +229,7 @@ test("Las tres dificultades aplican sus reglas de velocidad y asteroides", () =>
 
   const hard = game(); hard.api.selectDifficulty("hard"); hard.api.startGame();
   hard.api.passed(3); hard.api.tick();
-  assert.equal(hard.api.read().difficulty, "hard"); assert.equal(hard.api.read().asteroidPending, true);
+  assert.equal(hard.api.read().difficulty, "hard"); assert.equal(hard.api.read().asteroids, 1);
   assert.equal(hard.api.read().nextAsteroidAt, 7.5);
 });
 
@@ -249,6 +256,7 @@ test("El nombre queda bloqueado y cambiarlo cuesta 100 monedas", () => {
   assert.equal(g.api.beginNameEdit(), false);
   g.api.setCredits(120);
   assert.equal(g.api.beginNameEdit(), true);
+  assert.equal(g.api.confirmNameEdit("Nova"), true); // Confirma el pago y muestra el campo.
   assert.equal(g.api.confirmNameEdit("Nova"), true);
   assert.equal(g.api.read().playerName, "NOVA");
   assert.equal(g.api.read().credits, 20);
@@ -274,14 +282,15 @@ test("Recoger planeta suma +1 con animación y conserva monedas previas", () => 
   assert.equal(g.api.read().credits, 23); // Premio otorgado una sola vez.
 });
 
-test("Estrella muestra INVENCIBLE y el efecto dura lo mismo que su audio", () => {
+test("Estrella duplica la invencibilidad y reproduce el sonido dos veces", () => {
   const g = game(); g.api.starAtPlayer(); g.api.tick();
   assert(g.api.read().invincible); assert(g.api.read().feedback.includes("INVENCIBLE"));
   assert.equal(g.api.read().powerupActive, false);
-  assert.equal(g.api.read().invincibilityDurationFrames, 351);
-  assert.equal(g.api.read().invincibilityCountdown, 5);
-  for (let i = 0; i < 349; i++) g.api.tick();
-  assert.equal(g.api.read().invincibleTime, 350); assert(g.api.read().invincible);
+  assert.equal(g.api.read().invincibilityDurationFrames, 702);
+  assert.equal(g.api.read().invincibilityCountdown, 9);
+  for (let i = 0; i < 700; i++) g.api.tick();
+  assert.equal(g.api.read().invincibilitySoundPlays, 2);
+  assert.equal(g.api.read().invincibleTime, 701); assert(g.api.read().invincible);
   g.api.tick(); assert.equal(g.api.read().invincible, false);
 });
 
@@ -369,6 +378,8 @@ test("El jefe avisa durante 3 segundos antes de aparecer y suspende los pinchos"
 test("Sobrevivir 30 segundos derrota al jefe y entrega la recompensa", () => {
   const g = game(); g.api.setScore(100); g.api.startBossBattle();
   g.api.bossNearEnd(); g.api.safeTick();
+  assert.equal(g.api.read().bossDefeatAnimating, true);
+  for (let index = 0; index < g.api.read().bossDefeatAnimationFrames; index += 1) g.api.safeTick();
   const state = g.api.read();
   assert.equal(state.bossActive, false);
   assert.equal(state.bossCompleted, true);
@@ -407,7 +418,10 @@ test("El panel F2 exige 9701 y ofrece herramientas de prueba", () => {
   assert.equal(g.api.adminEnableInvincibility(), true);
   assert.equal(g.api.read().invincible, true);
   assert.equal(g.api.adminTestBoss(), true);
-  assert.equal(g.api.read().bossWarningActive, true);
+  assert.equal(g.api.read().bossActive, true);
+  assert.equal(g.api.read().bossWarningActive, false);
+  assert.equal(g.api.adminEnableInvincibility(), false);
+  assert.equal(g.api.read().invincible, false);
 });
 
 test("La tienda entrega 50 monedas por anuncio y respeta el máximo diario de 10", async () => {
@@ -503,4 +517,50 @@ test("Se conserva separación móvil y estado al girar la pantalla", () => {
   assert.equal(desktop.api.read().positions.length, 0); desktop.api.safeTick();
   assert.equal(desktop.api.read().positions.length, 1);
   assert(desktop.api.read().positions[0] > desktop.api.read().WIDTH);
+});
+
+test("Los umbrales del jefe respetan cada dificultad", () => {
+  for (const [difficulty, threshold] of [["easy", 100], ["normal", 75], ["hard", 100]]) {
+    const g = game(); g.api.selectDifficulty(difficulty); g.api.startGame();
+    g.api.setScore(threshold - 1);
+    assert.equal(g.api.startBossWarning(), false);
+    g.api.setScore(threshold);
+    assert.equal(g.api.startBossWarning(), true);
+  }
+});
+
+test("Pausa y reanuda la partida sin aceptar impulsos", () => {
+  const g = game();
+  const before = g.api.read().ufoY;
+  const velocityBefore = g.api.read().jumpVelocity;
+  assert.equal(g.api.pauseGame(), true);
+  assert.equal(g.api.read().gamePaused, true);
+  assert.equal(g.nodes.get("pause-dialog").open, true);
+  g.api.jump();
+  assert.equal(g.api.read().ufoY, before);
+  assert.equal(g.api.read().jumpVelocity, velocityBefore);
+  g.api.resumeGame();
+  assert.equal(g.api.read().gamePaused, false);
+  assert.equal(g.nodes.get("pause-dialog").open, false);
+});
+
+test("Los logros se guardan una sola vez y entregan su recompensa", () => {
+  const g = game(390, 844, true, { credits: 0, bestScore: 0,
+    bestScores: { easy: 0, normal: 0, hard: 0 }, achievements: [],
+    achievementStats: {} });
+  assert(g.api.read().achievements.includes("first-flight"));
+  assert.equal(g.api.read().credits, 10);
+  g.api.planetAtPlayer(); g.api.tick();
+  assert(g.api.read().achievements.includes("new-world"));
+  assert.equal(g.api.read().credits, 15);
+  g.api.planetAtPlayer(); g.api.tick();
+  assert.equal(g.api.read().credits, 15);
+});
+
+test("El menú incluye los 20 logros y sus dos sonidos", () => {
+  assert.equal(achievementIds.length, 20);
+  assert(html.includes('id="achievements-button"'));
+  assert(html.includes('id="achievements-screen"'));
+  assert(source.includes('new Audio("src/musica/logro.mp3")'));
+  assert(source.includes('new Audio("src/musica/logro-dificil.mp3")'));
 });

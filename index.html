@@ -53,6 +53,10 @@
         <div class="boss-hud-heading"><span>Devorador cósmico</span><strong id="boss-timer">30s</strong></div>
         <div class="boss-time-track" aria-hidden="true"><span id="boss-time-fill"></span></div>
       </section>
+      <aside id="achievement-toast" class="achievement-toast" role="status" aria-live="polite" hidden>
+        <span class="achievement-toast-icon" aria-hidden="true">🏆</span>
+        <div><strong>Logro desbloqueado</strong><b id="achievement-toast-title"></b><span id="achievement-toast-description"></span><em id="achievement-toast-reward"></em></div>
+      </aside>
       <header id="toolbar" class="toolbar" hidden>
         <button id="back-button" class="control back-button" type="button" hidden>Volver</button>
         <div class="toolbar-actions">
@@ -75,7 +79,7 @@
             </div>
             <span id="difficulty-description">Experiencia original de UFO RUN</span>
           </div>
-          <div class="menu-actions"><button id="play-button" class="action primary" type="button"><span aria-hidden="true">▶</span> Jugar</button><button id="shop-button" class="action secondary" type="button">Hangar</button><button id="help-button" class="action secondary" type="button">Ayuda</button><button id="ranking-button" class="action secondary" type="button">🏆 Ranking</button></div>
+          <div class="menu-actions"><button id="play-button" class="action primary" type="button"><span aria-hidden="true">▶</span> Jugar</button><button id="shop-button" class="action secondary" type="button">Hangar</button><button id="achievements-button" class="action secondary" type="button">🏆 Logros</button><button id="help-button" class="action secondary" type="button">Ayuda</button><button id="ranking-button" class="action secondary" type="button">Ranking</button></div>
           <div class="menu-info"><p class="instructions"><strong class="instructions-mobile">Toca para volar</strong><span class="instructions-mobile">Toca la pantalla para impulsarte</span><strong class="instructions-desktop">Espacio o clic</strong><span class="instructions-desktop">Para impulsarte</span></p><p class="record">Mejor puntaje<strong data-best-score>0</strong></p></div>
           <p class="menu-footnote">Cada punto ganado se convierte en una moneda</p>
         </div>
@@ -96,10 +100,14 @@
             <article class="help-card"><div class="help-spikes" aria-hidden="true"><img src="src/Pincho_alto.png" alt=""><img src="src/Pincho_bajo.png" alt=""></div><div><h3>Pinchos</h3><p>Atraviesa el espacio central sin tocar los bordes. Cada par superado suma 1 punto.</p></div></article>
             <article class="help-card"><div class="help-boundaries" aria-hidden="true"><span></span><b>UFO</b><span></span></div><div><h3>Techo y suelo</h3><p>No salgas de la pantalla: tocar el techo o el suelo termina la misión.</p></div></article>
             <article class="help-card"><img src="src/planetas/Tierra.png" alt="Planeta Tierra"><div><h3>Planetas</h3><p>Recoge cualquiera de los planetas para obtener 1 punto adicional.</p></div></article>
-            <article class="help-card"><img src="src/powerup_star.png" alt="Estrella de invencibilidad"><div><h3>Estrella</h3><p>Activa 5 segundos de invencibilidad. El contador aparece sobre la nave.</p></div></article>
+            <article class="help-card"><img src="src/powerup_star.png" alt="Estrella de invencibilidad"><div><h3>Estrella</h3><p>Activa cerca de 10 segundos de invencibilidad y repite su sonido a mitad del efecto.</p></div></article>
             <article class="help-card"><div class="help-asteroids"><img src="src/Obstaculos/Asteroide.png" alt="Asteroide"><img src="src/Obstaculos/asteroide_2.png" alt="Segundo asteroide"></div><div><h3>Asteroides</h3><p>Esquívalos: viajan muy rápido y destruyen la nave si no eres invencible.</p></div></article>
-            <article class="help-card"><img src="src/boss_cosmico.png" alt="Devorador cósmico"><div><h3>Jefe cósmico</h3><p>Aparece al alcanzar 100 puntos. Sobrevive 30 segundos a sus ataques; durante la batalla no aparecen pinchos.</p></div></article>
+            <article class="help-card"><img src="src/boss_cosmico.png" alt="Devorador cósmico"><div><h3>Jefe cósmico</h3><p>Aparece a los 75 puntos en Normal y a los 100 en Fácil o Difícil. Sobrevive 30 segundos a sus ataques.</p></div></article>
           </div>
+        </div>
+        <div id="achievements-screen" class="screen achievements-screen" hidden>
+          <div class="section-heading"><h2>🏆 Logros</h2><p><span id="achievement-count">0 / 20</span> desbloqueados</p></div>
+          <div id="achievements-grid" class="achievements-grid"></div>
         </div>
         <div id="ranking-screen" class="screen ranking-screen" hidden>
           <div class="ranking-panel">
@@ -133,12 +141,11 @@
       <dialog id="name-edit-dialog" class="pixel-dialog">
         <form id="name-edit-form" class="dialog-card">
           <p class="dialog-kicker">Registro de piloto</p>
-          <h2>Cambiar nombre</h2>
-          <p>Modificar el nombre cuesta 100 monedas.</p>
-          <label for="new-player-name">Nuevo nombre</label>
-          <input id="new-player-name" type="text" maxlength="12" autocomplete="nickname" required>
+          <h2 id="name-edit-title">¿Cambiar nombre?</h2>
+          <p id="name-edit-copy">Se descontarán 100 monedas de tu cuenta. ¿Quieres continuar?</p>
+          <div id="name-edit-fields" class="name-edit-fields" hidden><label for="new-player-name">Nuevo nombre</label><input id="new-player-name" type="text" maxlength="12" autocomplete="nickname"></div>
           <p id="name-edit-error" class="dialog-error" role="alert" hidden></p>
-          <div class="dialog-actions"><button id="cancel-name-edit" type="button">Cancelar</button><button class="confirm" type="submit">Cambiar · 100</button></div>
+          <div class="dialog-actions"><button id="cancel-name-edit" type="button">Cancelar</button><button id="confirm-name-edit" class="confirm" type="submit">Sí, pagar 100</button></div>
         </form>
       </dialog>
       <dialog id="admin-login-dialog" class="pixel-dialog">
@@ -158,10 +165,18 @@
           <p id="admin-status" role="status">Selecciona una acción.</p>
           <div class="admin-actions">
             <button id="admin-add-coins" type="button">+100 monedas</button>
-            <button id="admin-invincibility" type="button">Invencibilidad 5 s</button>
+            <button id="admin-invincibility" type="button" role="switch" aria-checked="false">Invencibilidad infinita: OFF</button>
             <button id="admin-test-boss" type="button">Probar jefe</button>
             <button id="admin-close" type="button">Cerrar</button>
           </div>
+        </section>
+      </dialog>
+      <dialog id="pause-dialog" class="pixel-dialog pause-dialog">
+        <section class="dialog-card">
+          <p class="dialog-kicker">Vuelo suspendido</p>
+          <h2>Juego pausado</h2>
+          <p>Pulsa P o Esc para continuar.</p>
+          <div class="admin-actions"><button id="resume-button" class="confirm" type="button">Continuar</button><button id="pause-restart-button" type="button">Reiniciar</button><button id="pause-menu-button" type="button">Menú principal</button></div>
         </section>
       </dialog>
     </main>

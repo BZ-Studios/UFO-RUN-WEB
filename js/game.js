@@ -35,7 +35,7 @@
   const INVINCIBILITY_FALLBACK_SECONDS = 5;
   const PLANET_SIZE = 80;
   const PLANET_OBSTACLE_INTERVAL = 3;
-  const STAR_OBSTACLE_INTERVAL = 12;
+  const STAR_OBSTACLE_INTERVAL = 18;
   const ASTEROID_SIZE = 64;
   const MOBILE_PORTRAIT_ASTEROID_SIZE = 48;
   const ASTEROID_OBSTACLE_INTERVAL = 10;
@@ -45,9 +45,9 @@
   const SCORE_AUDIO_FALLBACK_OFFSET_SECONDS = 0.12;
   const SCORE_AUDIO_SILENCE_THRESHOLD = 0.012;
   const SPECIAL_SPAWN_COOLDOWN_FRAMES = 48;
-  const BOSS_TRIGGER_SCORE = 100;
   const BOSS_WARNING_FRAMES = FPS * 3;
   const BOSS_DURATION_FRAMES = FPS * 30;
+  const BOSS_DEFEAT_ANIMATION_FRAMES = Math.round(FPS * 1.8);
   const BOSS_SCORE_REWARD = 10;
   const BOSS_COIN_REWARD = 50;
   const NAME_CHANGE_COST = 100;
@@ -57,19 +57,19 @@
       initialSpeed: 2.35, initialFrequency: 110, progressionEvery: 6,
       speedIncrement: 0.25, frequencyDecrease: 3, asteroidInterval: 0,
       mobilePortraitSpeedMultiplier: 1.12, mobilePortraitIntervalMultiplier: 1.75,
-      bossProjectileInterval: 120, bossProjectileSpeed: 3.4 },
+      bossTriggerScore: 100, bossProjectileInterval: 120, bossProjectileSpeed: 3.4 },
     normal: { name: "Normal", description: "Experiencia original de UFO RUN",
       initialSpeed: INITIAL_SPIKE_SPEED, initialFrequency: INITIAL_SPIKE_FREQUENCY,
       progressionEvery: 4, speedIncrement: 0.5, frequencyDecrease: 5,
       asteroidInterval: ASTEROID_OBSTACLE_INTERVAL,
       mobilePortraitSpeedMultiplier: 1.25, mobilePortraitIntervalMultiplier: 1.55,
-      bossProjectileInterval: 90, bossProjectileSpeed: 4.2 },
+      bossTriggerScore: 75, bossProjectileInterval: 90, bossProjectileSpeed: 4.2 },
     hard: { name: "Difícil", description: "El doble de apariciones de asteroides",
       initialSpeed: INITIAL_SPIKE_SPEED, initialFrequency: INITIAL_SPIKE_FREQUENCY,
       progressionEvery: 4, speedIncrement: 0.5, frequencyDecrease: 5,
       asteroidInterval: ASTEROID_OBSTACLE_INTERVAL / 2,
       mobilePortraitSpeedMultiplier: 1.45, mobilePortraitIntervalMultiplier: 1.3,
-      bossProjectileInterval: 65, bossProjectileSpeed: 5 },
+      bossTriggerScore: 100, bossProjectileInterval: 65, bossProjectileSpeed: 5 },
   };
 
 
@@ -82,6 +82,29 @@
     { id: "pulsar", name: "PULSAR AZUL", imageName: "ufoBlue", deadImageName: "ufoBlueDead", cost: 36, accent: "rgb(68, 154, 255)" },
     { id: "venezuela", name: "VENEZUELA", imageName: "ufoVenezuela", deadImageName: "ufoVenezuelaDead", cost: COUNTRY_SKIN_COST, accent: "rgb(255, 205, 62)" },
     { id: "argentina", name: "ARGENTINA", imageName: "ufoArgentina", deadImageName: "ufoArgentinaDead", cost: COUNTRY_SKIN_COST, accent: "rgb(107, 207, 246)" },
+  ];
+
+  const ACHIEVEMENTS = [
+    { id: "first-flight", title: "Primer despegue", description: "Inicia tu primera partida", reward: 10, type: "games", target: 1 },
+    { id: "space-cadet", title: "Cadete espacial", description: "Llega a 10 puntos en Normal o Difícil", reward: 10, type: "score", target: 10 },
+    { id: "veteran-pilot", title: "Piloto veterano", description: "Llega a 25 puntos en Normal o Difícil", reward: 15, type: "score", target: 25 },
+    { id: "galactic-ace", title: "As galáctico", description: "Llega a 50 puntos en Normal o Difícil", reward: 25, type: "score", target: 50 },
+    { id: "space-centurion", title: "Centurión espacial", description: "Llega a 100 puntos en Normal o Difícil", reward: 40, type: "score", target: 100 },
+    { id: "ufo-legend", title: "Leyenda de UFO RUN", description: "Llega a 200 puntos en Normal o Difícil", reward: 100, type: "score", target: 200, difficult: true },
+    { id: "new-world", title: "Mundo nuevo", description: "Recoge tu primer planeta", reward: 5, type: "planets", target: 1 },
+    { id: "solar-cartographer", title: "Cartógrafo solar", description: "Descubre los 9 planetas diferentes", reward: 40, type: "unique-planets", target: 9 },
+    { id: "planet-hunter", title: "Cazaplanetas", description: "Recoge 50 planetas en total", reward: 30, type: "planets", target: 50 },
+    { id: "stellar-energy", title: "Energía estelar", description: "Recoge tu primera estrella", reward: 5, type: "stars", target: 1 },
+    { id: "untouchable", title: "Intocable", description: "Recoge 5 estrellas en total", reward: 15, type: "stars", target: 5 },
+    { id: "rock-dodger", title: "Esquivador de rocas", description: "Supera 50 asteroides", reward: 15, type: "asteroids", target: 50 },
+    { id: "asteroid-field", title: "Campo de asteroides", description: "Supera 150 asteroides", reward: 35, type: "asteroids", target: 150, difficult: true },
+    { id: "clean-flight", title: "Vuelo limpio", description: "Llega a 30 puntos sin invencibilidad ni continuación", reward: 25, type: "clean-score", target: 30 },
+    { id: "absolute-mastery", title: "Dominio absoluto", description: "Llega a 100 puntos sin invencibilidad ni continuación", reward: 100, type: "clean-score", target: 100, difficult: true },
+    { id: "devourer-devoured", title: "Devorador devorado", description: "Derrota al jefe por primera vez", reward: 60, type: "bosses", target: 1, difficult: true },
+    { id: "cosmic-nightmare", title: "Pesadilla cósmica", description: "Derrota al jefe en Difícil", reward: 100, type: "hard-bosses", target: 1, difficult: true },
+    { id: "complete-pilot", title: "Piloto completo", description: "Llega a 60 puntos en las tres dificultades", reward: 40, type: "difficulty-mastery", target: 3, difficult: true },
+    { id: "galactic-collector", title: "Coleccionista galáctico", description: "Consigue todas las naves disponibles", reward: 50, type: "skins", target: SKINS.length, difficult: true },
+    { id: "national-pride", title: "Orgullo nacional", description: "Llega a 100 puntos en Difícil con Argentina o Venezuela", reward: 20, type: "national-score", target: 100, difficult: true },
   ];
 
   const backgroundSources = ["src/fondo.jpg", "src/Fondo-2.png", "src/Fondo-3.png"];
@@ -140,6 +163,8 @@
   const deathSound = new Audio("src/musica/sonido_muerte.mp3");
   const scoreSound = new Audio("src/musica/sonido_puntaje.mp3");
   const invincibilitySound = new Audio("src/musica/sonido_invencibilidad.mp3");
+  const achievementSound = new Audio("src/musica/logro.mp3");
+  const difficultAchievementSound = new Audio("src/musica/logro-dificil.mp3");
   let scoreAudioContext = null;
   let scoreAudioBuffer = null;
   let scoreAudioStartOffset = SCORE_AUDIO_FALLBACK_OFFSET_SECONDS;
@@ -149,22 +174,24 @@
   deathSound.volume = 0.3;
   scoreSound.volume = 0.3;
   invincibilitySound.volume = 0.3;
+  achievementSound.volume = 0.42;
+  difficultAchievementSound.volume = 0.46;
 
-  let invincibilityDurationFrames = Math.round(INVINCIBILITY_FALLBACK_SECONDS * FPS);
+  let invincibilitySoundFrames = Math.round(INVINCIBILITY_FALLBACK_SECONDS * FPS);
+  let invincibilityDurationFrames = invincibilitySoundFrames * 2;
 
   function syncInvincibilityDuration() {
     if (Number.isFinite(invincibilitySound.duration) && invincibilitySound.duration > 0) {
-      invincibilityDurationFrames = Math.max(1, Math.round(invincibilitySound.duration * FPS));
+      invincibilitySoundFrames = Math.max(1, Math.round(invincibilitySound.duration * FPS));
+      invincibilityDurationFrames = invincibilitySoundFrames * 2;
     }
     return invincibilityDurationFrames;
   }
 
   invincibilitySound.addEventListener("loadedmetadata", syncInvincibilityDuration);
-  invincibilitySound.addEventListener("ended", () => {
-    if (invincible && profile.soundEnabled) endInvincibility(false);
-  });
 
-  for (const audio of [backgroundMusic, deathSound, scoreSound, invincibilitySound]) {
+  for (const audio of [backgroundMusic, deathSound, scoreSound, invincibilitySound,
+    achievementSound, difficultAchievementSound]) {
     audio.preload = "auto";
   }
 
@@ -182,6 +209,11 @@
   let continueAdMessage = "Revive una vez en esta partida";
   let adRequestPending = false;
   let introTimers = [];
+  let gamePaused = false;
+  let pauseOwner = "";
+  let nameEditPaymentConfirmed = false;
+  let achievementToastTimer = 0;
+  const achievementQueue = [];
 
   function localDayKey(date = new Date()) {
     const year = date.getFullYear();
@@ -219,6 +251,22 @@
     return result;
   }
 
+  function normalizeAchievementStats(value) {
+    const number = (entry) => Math.max(0, Math.trunc(Number(entry) || 0));
+    return {
+      gamesStarted: number(value?.gamesStarted),
+      planetsCollected: number(value?.planetsCollected),
+      planetIds: Array.isArray(value?.planetIds) ? [...new Set(value.planetIds.filter((id) =>
+        planetCropSources.some((planet) => planet.imageName === id)))] : [],
+      starsCollected: number(value?.starsCollected),
+      asteroidsPassed: number(value?.asteroidsPassed),
+      bossesDefeated: number(value?.bossesDefeated),
+      hardBossesDefeated: number(value?.hardBossesDefeated),
+      cleanBestScore: number(value?.cleanBestScore),
+      nationalBestScore: number(value?.nationalBestScore),
+    };
+  }
+
   function loadProfile() {
     const fallback = {
       credits: 0,
@@ -232,6 +280,8 @@
       playerName: "PILOTO",
       playerNameConfirmed: false,
       rankings: normalizeRankings(),
+      achievements: [],
+      achievementStats: normalizeAchievementStats(),
     };
 
     try {
@@ -259,6 +309,9 @@
         playerName: cleanPlayerName(stored.playerName),
         playerNameConfirmed: stored.playerNameConfirmed === true,
         rankings: normalizeRankings(stored.rankings),
+        achievements: Array.isArray(stored.achievements) ? stored.achievements.filter((id) =>
+          ACHIEVEMENTS.some((achievement) => achievement.id === id)) : [],
+        achievementStats: normalizeAchievementStats(stored.achievementStats),
       };
     } catch (_error) {
       return fallback;
@@ -303,6 +356,8 @@
   let passedObstacles = 0;
   let invincible = false;
   let invincibleTime = 0;
+  let invincibilitySoundReplayed = false;
+  let runUsedInvincibility = false;
   let powerupActive = false;
   let powerupX = WIDTH;
   let powerupY = HEIGHT / 2;
@@ -329,11 +384,14 @@
   let bossProjectileCounter = 0;
   let bossVolleyCount = 0;
   let bossProjectiles = [];
+  let bossDefeatAnimating = false;
+  let bossDefeatFrames = 0;
   let feedback = [];
   let flightStarted = false;
   let bossWarningActive = false;
   let bossWarningFrames = 0;
   let adminUnlocked = false;
+  let adminInfiniteInvincibility = false;
   const spriteCache = new Map();
 
   const interfaceElement = document.getElementById("interface");
@@ -345,9 +403,11 @@
     shop: document.getElementById("shop-screen"),
     help: document.getElementById("help-screen"),
     ranking: document.getElementById("ranking-screen"),
+    achievements: document.getElementById("achievements-screen"),
     gameover: document.getElementById("gameover-screen"),
   };
   const skinCards = new Map();
+  const achievementCards = new Map();
   let interfaceState = "loading";
 
   function buildShopInterface() {
@@ -369,6 +429,112 @@
       grid.append(card);
       skinCards.set(skin.id, { card, ownership, button });
     }
+  }
+
+  function buildAchievementsInterface() {
+    const grid = document.getElementById("achievements-grid");
+    for (const achievement of ACHIEVEMENTS) {
+      const card = document.createElement("article");
+      card.className = `achievement-card${achievement.difficult ? " difficult" : ""}`;
+      const badge = document.createElement("span");
+      badge.className = "achievement-badge";
+      badge.textContent = "?";
+      const title = document.createElement("h3");
+      const description = document.createElement("p");
+      const footer = document.createElement("footer");
+      const progressText = document.createElement("span");
+      const reward = document.createElement("strong");
+      const track = document.createElement("div");
+      const fill = document.createElement("span");
+      track.className = "achievement-progress";
+      track.append(fill);
+      title.textContent = achievement.title;
+      description.textContent = achievement.description;
+      reward.textContent = `+${achievement.reward} monedas`;
+      footer.append(progressText, reward);
+      card.append(badge, title, description, footer, track);
+      grid.append(card);
+      achievementCards.set(achievement.id, { card, badge, progressText, fill });
+    }
+  }
+
+  function achievementProgress(achievement) {
+    const stats = profile.achievementStats;
+    const eligibleScore = currentDifficulty === "normal" || currentDifficulty === "hard" ? score : 0;
+    switch (achievement.type) {
+      case "games": return stats.gamesStarted;
+      case "score": return Math.max(profile.bestScores.normal, profile.bestScores.hard, eligibleScore);
+      case "planets": return stats.planetsCollected;
+      case "unique-planets": return stats.planetIds.length;
+      case "stars": return stats.starsCollected;
+      case "asteroids": return stats.asteroidsPassed;
+      case "clean-score": return stats.cleanBestScore;
+      case "bosses": return stats.bossesDefeated;
+      case "hard-bosses": return stats.hardBossesDefeated;
+      case "difficulty-mastery": return Object.keys(DIFFICULTIES).filter((difficulty) =>
+        Math.max(profile.bestScores[difficulty], currentDifficulty === difficulty ? score : 0) >= 60).length;
+      case "skins": return profile.ownedSkins.length;
+      case "national-score": return stats.nationalBestScore;
+      default: return 0;
+    }
+  }
+
+  function renderAchievements() {
+    document.getElementById("achievement-count").textContent =
+      `${profile.achievements.length} / ${ACHIEVEMENTS.length}`;
+    for (const achievement of ACHIEVEMENTS) {
+      const elements = achievementCards.get(achievement.id);
+      if (!elements) continue;
+      const unlocked = profile.achievements.includes(achievement.id);
+      const progress = Math.min(achievement.target, achievementProgress(achievement));
+      elements.card.classList.toggle("unlocked", unlocked);
+      elements.badge.textContent = unlocked ? "🏆" : "?";
+      elements.progressText.textContent = unlocked ? "Completado" : `${progress} / ${achievement.target}`;
+      elements.fill.style.transform = `scaleX(${achievement.target ? progress / achievement.target : 0})`;
+    }
+  }
+
+  function showNextAchievement() {
+    if (achievementToastTimer || !achievementQueue.length) return;
+    const achievement = achievementQueue.shift();
+    const toast = document.getElementById("achievement-toast");
+    document.getElementById("achievement-toast-title").textContent = achievement.title;
+    document.getElementById("achievement-toast-description").textContent = achievement.description;
+    document.getElementById("achievement-toast-reward").textContent = `+${achievement.reward} monedas`;
+    toast.classList.toggle("difficult", achievement.difficult === true);
+    toast.hidden = false;
+    playEffect(achievement.difficult ? difficultAchievementSound : achievementSound);
+    achievementToastTimer = window.setTimeout(() => {
+      toast.hidden = true;
+      achievementToastTimer = 0;
+      showNextAchievement();
+    }, 3000);
+  }
+
+  function checkAchievements() {
+    if (state === "playing" && (currentDifficulty === "normal" || currentDifficulty === "hard") &&
+      !runUsedInvincibility && !continueUsed) {
+      profile.achievementStats.cleanBestScore = Math.max(profile.achievementStats.cleanBestScore, score);
+    }
+    if (state === "playing" && currentDifficulty === "hard" &&
+      ["argentina", "venezuela"].includes(profile.selectedSkin)) {
+      profile.achievementStats.nationalBestScore = Math.max(profile.achievementStats.nationalBestScore, score);
+    }
+    const unlocked = ACHIEVEMENTS.filter((achievement) =>
+      !profile.achievements.includes(achievement.id) && achievementProgress(achievement) >= achievement.target);
+    if (!unlocked.length) {
+      saveProfile();
+      return [];
+    }
+    for (const achievement of unlocked) {
+      profile.achievements.push(achievement.id);
+      profile.credits += achievement.reward;
+      achievementQueue.push(achievement);
+    }
+    saveProfile();
+    syncInterface();
+    showNextAchievement();
+    return unlocked.map((achievement) => achievement.id);
   }
 
   function renderRanking() {
@@ -473,7 +639,7 @@
     document.getElementById("authors-footer").hidden = state !== "gameover";
     document.getElementById("invincible-label").hidden = state !== "playing" || !invincible;
     document.getElementById("boss-hud").hidden = state !== "playing" || !bossActive;
-    document.getElementById("flight-start-prompt").hidden = state !== "playing" || flightStarted;
+    document.getElementById("flight-start-prompt").hidden = state !== "playing" || flightStarted || gamePaused;
     gameHud.hidden = state !== "playing";
     interfaceElement.hidden = !screenElements[state];
     for (const [name, screen] of Object.entries(screenElements)) {
@@ -494,7 +660,7 @@
     document.getElementById("equipped-preview").src = imageSources[skin.imageName];
     document.getElementById("equipped-name").textContent = skin.name;
     document.getElementById("equipped-name").style.color = skin.accent;
-    document.getElementById("back-button").hidden = !["shop", "help", "ranking"].includes(state);
+    document.getElementById("back-button").hidden = !["shop", "help", "ranking", "achievements"].includes(state);
     const soundButton = document.getElementById("sound-button");
     soundButton.setAttribute("aria-pressed", String(!profile.soundEnabled));
     soundButton.setAttribute("aria-label", profile.soundEnabled ? "Silenciar sonido" : "Activar sonido");
@@ -529,6 +695,10 @@
       button.setAttribute("aria-selected", String(button.dataset.rankingDifficulty === rankingDifficulty));
     });
     if (state === "ranking") renderRanking();
+    if (state === "achievements") renderAchievements();
+    const adminInvincibility = document.getElementById("admin-invincibility");
+    adminInvincibility.setAttribute("aria-checked", String(adminInfiniteInvincibility));
+    adminInvincibility.textContent = `Invencibilidad infinita: ${adminInfiniteInvincibility ? "ON" : "OFF"}`;
     for (const skin of SKINS) {
       const elements = skinCards.get(skin.id);
       const owned = profile.ownedSkins.includes(skin.id);
@@ -764,21 +934,42 @@
 
   function beginNameEdit() {
     const error = document.getElementById("name-edit-error");
+    const confirmButton = document.getElementById("confirm-name-edit");
+    nameEditPaymentConfirmed = false;
+    document.getElementById("name-edit-title").textContent = "¿Cambiar nombre?";
+    document.getElementById("name-edit-copy").textContent =
+      `Se descontarán ${NAME_CHANGE_COST} monedas de tu cuenta. ¿Quieres continuar?`;
+    document.getElementById("name-edit-fields").hidden = true;
+    confirmButton.textContent = `Sí, pagar ${NAME_CHANGE_COST}`;
+    confirmButton.hidden = false;
     if (profile.credits < NAME_CHANGE_COST) {
       error.textContent = `Necesitas ${NAME_CHANGE_COST} monedas para cambiar el nombre.`;
       error.hidden = false;
+      confirmButton.hidden = true;
       openDialog(document.getElementById("name-edit-dialog"));
       return false;
     }
-    const input = document.getElementById("new-player-name");
-    input.value = profile.playerName;
     error.hidden = true;
     openDialog(document.getElementById("name-edit-dialog"));
+    return true;
+  }
+
+  function confirmNameEditPayment() {
+    if (profile.credits < NAME_CHANGE_COST) return false;
+    nameEditPaymentConfirmed = true;
+    const input = document.getElementById("new-player-name");
+    input.value = profile.playerName;
+    document.getElementById("name-edit-title").textContent = "Nuevo nombre";
+    document.getElementById("name-edit-copy").textContent =
+      `El cambio costará ${NAME_CHANGE_COST} monedas cuando guardes el nuevo nombre.`;
+    document.getElementById("name-edit-fields").hidden = false;
+    document.getElementById("confirm-name-edit").textContent = "Guardar nombre";
     window.setTimeout(() => input.focus(), 0);
     return true;
   }
 
   function confirmNameEdit(rawName) {
+    if (!nameEditPaymentConfirmed) return confirmNameEditPayment();
     const input = document.getElementById("new-player-name");
     const error = document.getElementById("name-edit-error");
     const nextName = cleanPlayerName(rawName).toUpperCase();
@@ -807,7 +998,37 @@
     return true;
   }
 
+  function pauseForModal(owner) {
+    if (state !== "playing" || gamePaused) return;
+    gamePaused = true;
+    pauseOwner = owner;
+    accumulator = 0;
+    stopAudio(backgroundMusic);
+    stopAudio(invincibilitySound);
+    syncInterface();
+  }
+
+  function resumeFromModal(owner) {
+    if (!gamePaused || pauseOwner !== owner) return;
+    gamePaused = false;
+    pauseOwner = "";
+    accumulator = 0;
+    if (profile.soundEnabled) {
+      playAudio(backgroundMusic);
+      if (invincible && !adminInfiniteInvincibility) playAudio(invincibilitySound);
+    }
+    syncInterface();
+    canvas.focus({ preventScroll: true });
+  }
+
+  function closeAdmin() {
+    closeDialog(document.getElementById("admin-login-dialog"));
+    closeDialog(document.getElementById("admin-panel-dialog"));
+    resumeFromModal("admin");
+  }
+
   function openAdmin() {
+    pauseForModal("admin");
     if (adminUnlocked) {
       document.getElementById("admin-status").textContent = "Selecciona una acción.";
       openDialog(document.getElementById("admin-panel-dialog"));
@@ -841,29 +1062,44 @@
   }
 
   function adminEnableInvincibility() {
-    if (!adminUnlocked || state !== "playing") {
-      document.getElementById("admin-status").textContent = "Inicia una partida para activar la invencibilidad.";
-      return false;
+    if (!adminUnlocked) return false;
+    adminInfiniteInvincibility = !adminInfiniteInvincibility;
+    if (state === "playing") {
+      if (adminInfiniteInvincibility) {
+        invincible = true;
+        invincibleTime = 0;
+        runUsedInvincibility = true;
+        stopAudio(invincibilitySound, true);
+      } else {
+        endInvincibility(true, true);
+      }
     }
-    invincible = true;
-    invincibleTime = 0;
-    syncInvincibilityDuration();
-    playAudio(invincibilitySound, true);
     syncInterface();
-    document.getElementById("admin-status").textContent = "Invencibilidad activada.";
-    return true;
+    document.getElementById("admin-status").textContent =
+      `Invencibilidad infinita ${adminInfiniteInvincibility ? "activada" : "desactivada"}.`;
+    return adminInfiniteInvincibility;
   }
 
   function adminTestBoss() {
-    if (!adminUnlocked || state !== "playing" || bossActive || bossWarningActive || bossCompleted) {
-      document.getElementById("admin-status").textContent = "Inicia una partida sin un jefe activo.";
-      return false;
-    }
-    score = BOSS_TRIGGER_SCORE;
+    if (!adminUnlocked) return false;
+    closeAdmin();
+    startGame();
+    score = DIFFICULTIES[currentDifficulty].bossTriggerScore;
     flightStarted = true;
-    startBossWarning();
-    document.getElementById("admin-status").textContent = "Prueba de jefe iniciada.";
+    startBossBattle();
     return true;
+  }
+
+  function pauseGame() {
+    if (state !== "playing" || gamePaused) return false;
+    pauseForModal("pause");
+    openDialog(document.getElementById("pause-dialog"));
+    return true;
+  }
+
+  function resumeGame() {
+    closeDialog(document.getElementById("pause-dialog"));
+    resumeFromModal("pause");
   }
 
   function stopAudio(audio, rewind = false) {
@@ -878,6 +1114,11 @@
   }
 
   function startGame() {
+    closeDialog(document.getElementById("pause-dialog"));
+    closeDialog(document.getElementById("admin-login-dialog"));
+    closeDialog(document.getElementById("admin-panel-dialog"));
+    gamePaused = false;
+    pauseOwner = "";
     scoreAudioContext?.resume().catch(() => {});
     if (gamesStarted > 0) {
       backgroundIndex = (backgroundIndex + 1) % backgroundSources.length;
@@ -900,6 +1141,8 @@
     passedObstacles = 0;
     invincible = false;
     invincibleTime = 0;
+    invincibilitySoundReplayed = false;
+    runUsedInvincibility = false;
     powerupActive = false;
     powerupX = WIDTH;
     powerupY = HEIGHT / 2;
@@ -928,6 +1171,8 @@
     bossProjectileCounter = 0;
     bossVolleyCount = 0;
     bossProjectiles = [];
+    bossDefeatAnimating = false;
+    bossDefeatFrames = 0;
     feedback = [];
     lastReward = 0;
     continueUsed = false;
@@ -936,8 +1181,15 @@
     shopMessage = "";
     accumulator = 0;
     state = "playing";
+    profile.achievementStats.gamesStarted += 1;
+    if (adminInfiniteInvincibility) {
+      invincible = true;
+      runUsedInvincibility = true;
+    }
+    saveProfile();
     gameHud.textContent = "Puntaje: 0";
     syncInterface();
+    checkAchievements();
 
     stopAudio(invincibilitySound, true);
     playAudio(backgroundMusic, true);
@@ -945,6 +1197,11 @@
   }
 
   function showMainMenu() {
+    closeDialog(document.getElementById("pause-dialog"));
+    closeDialog(document.getElementById("admin-login-dialog"));
+    closeDialog(document.getElementById("admin-panel-dialog"));
+    gamePaused = false;
+    pauseOwner = "";
     state = "menu";
     syncInterface();
     accumulator = 0;
@@ -979,6 +1236,14 @@
     stopAudio(invincibilitySound, true);
   }
 
+  function showAchievements() {
+    state = "achievements";
+    accumulator = 0;
+    syncInterface();
+    stopAudio(backgroundMusic, true);
+    stopAudio(invincibilitySound, true);
+  }
+
   function selectDifficulty(difficulty) {
     if (!DIFFICULTIES[difficulty]) return;
     profile.difficulty = difficulty;
@@ -1001,7 +1266,7 @@
     if (!profile.soundEnabled) {
       stopAudio(backgroundMusic);
       stopAudio(invincibilitySound);
-    } else if (state === "playing") {
+    } else if (state === "playing" && !gamePaused) {
       playAudio(backgroundMusic);
     }
   }
@@ -1034,6 +1299,7 @@
     shopMessageUntil = performance.now() + 1800;
     saveProfile();
     syncInterface();
+    checkAchievements();
     window.setTimeout(syncInterface, 1850);
   }
 
@@ -1087,6 +1353,8 @@
     bossProjectiles = [];
     invincible = true;
     invincibleTime = 0;
+    invincibilitySoundReplayed = false;
+    runUsedInvincibility = true;
     syncInvincibilityDuration();
     state = "playing";
     accumulator = 0;
@@ -1112,7 +1380,7 @@
   }
 
   function jump() {
-    if (state === "playing") {
+    if (state === "playing" && !gamePaused) {
       if (!flightStarted) {
         flightStarted = true;
         syncInterface();
@@ -1164,14 +1432,14 @@
 
   function trySpawnPendingSpecial() {
     if (specialItemActive() || specialSpawnCooldown > 0) return;
-    if (starPending) {
-      if (!invincible) activateStar();
-      return;
-    }
-    if (planetPending) {
-      activateRandomPlanet();
-    } else if (asteroidPending) {
+    // Los asteroides tienen prioridad para que planetas y estrellas no los
+    // bloqueen indefinidamente en Normal y Difícil.
+    if (asteroidPending) {
       activateAsteroid();
+    } else if (starPending) {
+      if (!invincible) activateStar();
+    } else if (planetPending) {
+      activateRandomPlanet();
     }
   }
 
@@ -1216,6 +1484,7 @@
       imageName,
       spriteName: size === ASTEROID_SIZE ? imageName : `${imageName}Small`,
       size,
+      counted: false,
     });
     asteroidPending = false;
   }
@@ -1378,6 +1647,7 @@
     profile.credits += lastReward;
     creditedScore += lastReward;
     profile.bestScores[currentDifficulty] = Math.max(profile.bestScores[currentDifficulty], score);
+    checkAchievements();
     recordRankingScore();
     saveProfile();
     state = "gameover";
@@ -1389,10 +1659,12 @@
     stopAudio(invincibilitySound, true);
   }
 
-  function endInvincibility(rewindSound = true) {
+  function endInvincibility(rewindSound = true, force = false) {
+    if (adminInfiniteInvincibility && !force) return;
     if (!invincible) return;
     invincible = false;
     invincibleTime = 0;
+    invincibilitySoundReplayed = false;
     if (rewindSound) stopAudio(invincibilitySound, true);
   }
 
@@ -1404,7 +1676,8 @@
   }
 
   function startBossWarning() {
-    if (bossWarningActive || bossActive || bossCompleted || score < BOSS_TRIGGER_SCORE) return false;
+    if (bossWarningActive || bossActive || bossDefeatAnimating || bossCompleted ||
+      score < DIFFICULTIES[currentDifficulty].bossTriggerScore) return false;
     bossWarningActive = true;
     bossWarningFrames = 0;
     powerupActive = false;
@@ -1419,7 +1692,8 @@
   }
 
   function startBossBattle() {
-    if (bossActive || bossCompleted || score < BOSS_TRIGGER_SCORE) return false;
+    if (bossActive || bossDefeatAnimating || bossCompleted ||
+      score < DIFFICULTIES[currentDifficulty].bossTriggerScore) return false;
     const dimensions = bossDimensions();
     bossWarningActive = false;
     bossWarningFrames = 0;
@@ -1430,6 +1704,8 @@
     bossProjectileCounter = 0;
     bossVolleyCount = 0;
     bossProjectiles = [];
+    bossDefeatAnimating = false;
+    bossDefeatFrames = 0;
     spikes = [];
     spikeCounter = 0;
     powerupActive = false;
@@ -1445,7 +1721,8 @@
   }
 
   function checkBossTrigger() {
-    if (!bossCompleted && !bossActive && !bossWarningActive && score >= BOSS_TRIGGER_SCORE) startBossWarning();
+    if (!bossCompleted && !bossActive && !bossDefeatAnimating && !bossWarningActive &&
+      score >= DIFFICULTIES[currentDifficulty].bossTriggerScore) startBossWarning();
   }
 
   function updateBossWarning(ufoRect, speedMultiplier) {
@@ -1489,22 +1766,39 @@
   function finishBossBattle() {
     if (!bossActive) return;
     bossActive = false;
-    bossCompleted = true;
+    bossDefeatAnimating = true;
+    bossDefeatFrames = 0;
     bossProjectiles = [];
     bossTimeFrames = BOSS_DURATION_FRAMES;
+  }
+
+  function completeBossDefeat() {
+    if (!bossDefeatAnimating) return;
+    bossDefeatAnimating = false;
+    bossCompleted = true;
     score += BOSS_SCORE_REWARD;
     profile.credits += BOSS_COIN_REWARD;
+    profile.achievementStats.bossesDefeated += 1;
+    if (currentDifficulty === "hard") profile.achievementStats.hardBossesDefeated += 1;
     spikeCounter = 0;
     addFeedback(`¡JEFE SUPERADO! +${BOSS_SCORE_REWARD}`, WIDTH / 2, HEIGHT * 0.42, "#50dcff", 190);
     saveProfile();
     syncInterface();
+    checkAchievements();
+  }
+
+  function updateBossDefeatAnimation() {
+    bossDefeatFrames += 1;
+    bossY += 1.5 + bossDefeatFrames * 0.035;
+    bossX += Math.sin(bossDefeatFrames / 8) * 1.25;
+    if (bossDefeatFrames >= BOSS_DEFEAT_ANIMATION_FRAMES) completeBossDefeat();
   }
 
   function updateBossBattle(ufoRect) {
     const dimensions = bossDimensions();
     const targetX = WIDTH - dimensions.width + 18;
     bossX += (targetX - bossX) * 0.045;
-    bossY = Math.max(78, HEIGHT * 0.24 - dimensions.height / 2 + Math.sin(bossTimeFrames / 38) * 18);
+    bossY = Math.max(58, HEIGHT * 0.34 - dimensions.height / 2 + Math.sin(bossTimeFrames / 34) * 42);
     bossProjectileCounter += 1;
     if (bossProjectileCounter >= DIFFICULTIES[currentDifficulty].bossProjectileInterval && bossX < WIDTH - 20) {
       bossProjectileCounter = 0;
@@ -1527,8 +1821,12 @@
   }
 
   function finishGameplayUpdate(diedThisFrame) {
-    if (invincible) {
+    if (invincible && !adminInfiniteInvincibility) {
       invincibleTime += 1;
+      if (!invincibilitySoundReplayed && invincibleTime >= invincibilitySoundFrames) {
+        invincibilitySoundReplayed = true;
+        playAudio(invincibilitySound, true);
+      }
       if (invincibleTime >= invincibilityDurationFrames) {
         endInvincibility();
         // No modificar la posición de ninguna estrella al terminar el efecto.
@@ -1566,6 +1864,12 @@
       return;
     }
 
+    if (bossDefeatAnimating) {
+      updateBossDefeatAnimation();
+      finishGameplayUpdate(diedThisFrame);
+      return;
+    }
+
     spikeCounter += 1;
     const mobileIntervalMultiplier = mobilePortraitQuery.matches
       ? difficulty.mobilePortraitIntervalMultiplier : MOBILE_SPIKE_INTERVAL_MULTIPLIER;
@@ -1587,6 +1891,7 @@
         passedObstacles += 1;
         score += 1;
         playScoreSound();
+        checkAchievements();
         checkBossTrigger();
         if (!bossActive && !bossWarningActive && passedObstacles < 44 &&
           passedObstacles % difficulty.progressionEvery === 0) {
@@ -1627,11 +1932,15 @@
       if (opaqueOverlap(ufoRect, spriteRect(getSprite("powerup"), powerupX, powerupY))) {
         invincible = true;
         invincibleTime = 0;
+        invincibilitySoundReplayed = false;
+        runUsedInvincibility = true;
+        profile.achievementStats.starsCollected += 1;
         syncInvincibilityDuration();
         powerupActive = false;
         beginSpecialSpawnCooldown();
         addFeedback("INVENCIBLE", UFO_X + UFO_WIDTH / 2, ufoY - 42, "#ffd648");
         playAudio(invincibilitySound, true);
+        checkAchievements();
       } else if (powerupX + POWERUP_SIZE < 0) {
         powerupActive = false;
         beginSpecialSpawnCooldown();
@@ -1642,11 +1951,16 @@
       planetX -= spikeSpeed * portraitSpeedMultiplier * WIDTH / 800;
       if (opaqueOverlap(ufoRect, spriteRect(getPlanetSprite(), planetX, planetY))) {
         score += 1;
+        profile.achievementStats.planetsCollected += 1;
+        if (!profile.achievementStats.planetIds.includes(currentPlanet.imageName)) {
+          profile.achievementStats.planetIds.push(currentPlanet.imageName);
+        }
         playScoreSound();
         addFeedback("+1", planetX + PLANET_SIZE / 2, planetY, "#50dcff");
         planetActive = false;
         beginSpecialSpawnCooldown();
         checkBossTrigger();
+        checkAchievements();
       } else if (planetX + PLANET_SIZE < 0) {
         planetActive = false;
         beginSpecialSpawnCooldown();
@@ -1656,6 +1970,11 @@
     const asteroidWasActive = asteroids.length > 0;
     for (const asteroid of asteroids) {
       moveFlyingItem(asteroid, asteroid.size, ASTEROID_SPEED * portraitSpeedMultiplier);
+      if (!asteroid.counted && UFO_X > asteroid.x + asteroid.size) {
+        asteroid.counted = true;
+        profile.achievementStats.asteroidsPassed += 1;
+        checkAchievements();
+      }
       if (!invincible && opaqueOverlap(ufoRect,
         spriteRect(getSprite(asteroid.spriteName), asteroid.x, asteroid.y))) {
         diedThisFrame = true;
@@ -1682,14 +2001,36 @@
   }
 
   function drawBossBattle() {
-    if (!bossActive) return;
+    if (!bossActive && !bossDefeatAnimating) return;
     const dimensions = bossDimensions();
     context.save();
     context.imageSmoothingEnabled = false;
     context.shadowColor = "#632dff";
     context.shadowBlur = 18;
-    context.drawImage(images.cosmicBoss, Math.trunc(bossX), Math.trunc(bossY),
-      Math.trunc(dimensions.width), Math.trunc(dimensions.height));
+    if (bossDefeatAnimating) {
+      const progress = bossDefeatFrames / BOSS_DEFEAT_ANIMATION_FRAMES;
+      context.globalAlpha = Math.max(0, 1 - progress * 0.75);
+      context.translate(bossX + dimensions.width / 2, bossY + dimensions.height / 2);
+      context.rotate(progress * 1.35);
+      context.drawImage(images.cosmicBoss, -dimensions.width / 2, -dimensions.height / 2,
+        Math.trunc(dimensions.width), Math.trunc(dimensions.height));
+    } else {
+      // Tres cortes del sprite se desplazan de forma independiente para dar
+      // vida a la cabeza, el cuerpo y la cola sin perder el pixel art original.
+      const slices = [0, 0.3, 0.72, 1];
+      for (let index = 0; index < slices.length - 1; index += 1) {
+        const start = slices[index], end = slices[index + 1];
+        const sourceY = Math.floor(images.cosmicBoss.height * start);
+        const sourceHeight = Math.ceil(images.cosmicBoss.height * (end - start));
+        const destinationY = bossY + dimensions.height * start;
+        const destinationHeight = dimensions.height * (end - start);
+        const sway = index === 0 ? Math.sin(bossTimeFrames / 7) * 5
+          : index === 2 ? Math.sin(bossTimeFrames / 9 + 1.8) * 7 : Math.sin(bossTimeFrames / 13) * 2;
+        context.drawImage(images.cosmicBoss, 0, sourceY, images.cosmicBoss.width, sourceHeight,
+          Math.trunc(bossX + sway), Math.trunc(destinationY),
+          Math.trunc(dimensions.width), Math.ceil(destinationHeight));
+      }
+    }
     context.restore();
 
     for (const projectile of bossProjectiles) {
@@ -1769,8 +2110,9 @@
     context.fillStyle = "#ffd648";
     const x = UFO_X + sprite.width / 2;
     const y = Math.max(26, ufoY - 9);
-    context.strokeText(`${remainingSeconds}s`, x, y);
-    context.fillText(`${remainingSeconds}s`, x, y);
+    const label = adminInfiniteInvincibility ? "∞" : `${remainingSeconds}s`;
+    context.strokeText(label, x, y);
+    context.fillText(label, x, y);
     context.restore();
   }
 
@@ -1794,7 +2136,7 @@
         drawInvincibilityCountdown(sprite);
       }
     }
-    if (state === "playing") {
+    if (state === "playing" && !gamePaused) {
       drawFeedback();
       drawBossWarning();
       const scoreLabel = "Puntaje: " + score;
@@ -1831,34 +2173,42 @@
     if (event.pointerType === "mouse" && event.button !== 0) return;
     event.preventDefault();
     canvas.focus({ preventScroll: true });
-    jump();
+    if (!gamePaused) jump();
   });
 
   window.addEventListener("keydown", (event) => {
     if (event.code === "F2") {
       event.preventDefault();
-      openAdmin();
+      if (document.getElementById("admin-login-dialog").open ||
+        document.getElementById("admin-panel-dialog").open) closeAdmin();
+      else {
+        if (document.getElementById("pause-dialog").open) resumeGame();
+        openAdmin();
+      }
       return;
     }
+    if (document.getElementById("admin-login-dialog").open ||
+      document.getElementById("admin-panel-dialog").open) return;
     // Enter/Espacio activan el botón enfocado; Escape mantiene la navegación global.
     if ((event.code === "Space" || event.code === "Enter") &&
       event.target instanceof HTMLElement && event.target.closest("button")) return;
     if (state === "intro" && (event.code === "Escape" || event.code === "Enter")) {
       event.preventDefault();
       finishIntro();
-    } else if (state === "playing" && event.code === "Space") {
+    } else if (state === "playing" && (event.code === "KeyP" || event.code === "Escape")) {
+      event.preventDefault();
+      if (gamePaused && pauseOwner === "pause") resumeGame();
+      else pauseGame();
+    } else if (state === "playing" && event.code === "Space" && !gamePaused) {
       event.preventDefault();
       jump();
-    } else if (state === "playing" && event.code === "Escape") {
-      event.preventDefault();
-      showMainMenu();
     } else if (state === "menu" && (event.code === "Space" || event.code === "Enter")) {
       event.preventDefault();
       startGame();
     } else if (state === "menu" && event.code === "KeyT") {
       event.preventDefault();
       showShop();
-    } else if (["shop", "help", "ranking"].includes(state) && event.code === "Escape") {
+    } else if (["shop", "help", "ranking", "achievements"].includes(state) && event.code === "Escape") {
       event.preventDefault();
       showMainMenu();
     } else if (state === "gameover" && (event.code === "KeyR" || event.code === "Enter")) {
@@ -1871,12 +2221,14 @@
   });
 
   buildShopInterface();
+  buildAchievementsInterface();
   for (const [id, handler] of Object.entries({
     "play-button": startGame,
     "restart-button": startGame,
     "shop-button": showShop,
     "help-button": showHelp,
     "ranking-button": showRanking,
+    "achievements-button": showAchievements,
     "back-button": showMainMenu,
     "menu-button": showMainMenu,
     "coin-ad-button": handleCoinAd,
@@ -1886,11 +2238,19 @@
     "skip-intro-button": finishIntro,
     "edit-name-button": beginNameEdit,
     "cancel-name-edit": () => closeDialog(document.getElementById("name-edit-dialog")),
-    "cancel-admin-login": () => closeDialog(document.getElementById("admin-login-dialog")),
+    "cancel-admin-login": closeAdmin,
     "admin-add-coins": adminAddCoins,
     "admin-invincibility": adminEnableInvincibility,
     "admin-test-boss": adminTestBoss,
-    "admin-close": () => closeDialog(document.getElementById("admin-panel-dialog")),
+    "admin-close": closeAdmin,
+    "resume-button": resumeGame,
+    "pause-restart-button": () => {
+      closeDialog(document.getElementById("pause-dialog"));
+      gamePaused = false;
+      pauseOwner = "";
+      startGame();
+    },
+    "pause-menu-button": showMainMenu,
   })) {
     document.getElementById(id).addEventListener("click", handler);
   }
@@ -1911,6 +2271,16 @@
   document.getElementById("player-name-form").addEventListener("submit", (event) => {
     event.preventDefault();
     confirmPlayerName(document.getElementById("entry-player-name").value);
+  });
+  for (const id of ["admin-login-dialog", "admin-panel-dialog"]) {
+    document.getElementById(id).addEventListener("cancel", (event) => {
+      event.preventDefault();
+      closeAdmin();
+    });
+  }
+  document.getElementById("pause-dialog").addEventListener("cancel", (event) => {
+    event.preventDefault();
+    resumeGame();
   });
   resizeGame();
   if (window.ResizeObserver) {
