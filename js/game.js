@@ -46,7 +46,6 @@
   const SCORE_AUDIO_SILENCE_THRESHOLD = 0.012;
   const SPECIAL_SPAWN_COOLDOWN_FRAMES = 48;
   const BOSS_WARNING_FRAMES = FPS * 3;
-  const BOSS_DURATION_FRAMES = FPS * 30;
   const BOSS_DEFEAT_ANIMATION_FRAMES = Math.round(FPS * 1.8);
   const BOSS_SCORE_REWARD = 10;
   const BOSS_COIN_REWARD = 50;
@@ -57,19 +56,22 @@
       initialSpeed: 2.35, initialFrequency: 110, progressionEvery: 6,
       speedIncrement: 0.25, frequencyDecrease: 3, asteroidInterval: 0,
       mobilePortraitSpeedMultiplier: 1.12, mobilePortraitIntervalMultiplier: 1.75,
-      bossTriggerScore: 100, bossProjectileInterval: 120, bossProjectileSpeed: 3.4 },
+      bossTriggerScore: 50, bossDurationSeconds: 20,
+      bossProjectileInterval: 120, bossProjectileSpeed: 3.4 },
     normal: { name: "Normal", description: "Experiencia original de UFO RUN",
       initialSpeed: INITIAL_SPIKE_SPEED, initialFrequency: INITIAL_SPIKE_FREQUENCY,
       progressionEvery: 4, speedIncrement: 0.5, frequencyDecrease: 5,
       asteroidInterval: ASTEROID_OBSTACLE_INTERVAL,
       mobilePortraitSpeedMultiplier: 1.25, mobilePortraitIntervalMultiplier: 1.55,
-      bossTriggerScore: 75, bossProjectileInterval: 90, bossProjectileSpeed: 4.2 },
+      bossTriggerScore: 75, bossDurationSeconds: 30,
+      bossProjectileInterval: 90, bossProjectileSpeed: 4.2 },
     hard: { name: "Difícil", description: "El doble de apariciones de asteroides",
       initialSpeed: INITIAL_SPIKE_SPEED, initialFrequency: INITIAL_SPIKE_FREQUENCY,
       progressionEvery: 4, speedIncrement: 0.5, frequencyDecrease: 5,
       asteroidInterval: ASTEROID_OBSTACLE_INTERVAL / 2,
       mobilePortraitSpeedMultiplier: 1.45, mobilePortraitIntervalMultiplier: 1.3,
-      bossTriggerScore: 100, bossProjectileInterval: 65, bossProjectileSpeed: 5 },
+      bossTriggerScore: 100, bossDurationSeconds: 40,
+      bossProjectileInterval: 65, bossProjectileSpeed: 5 },
   };
 
 
@@ -100,8 +102,10 @@
     { id: "asteroid-field", title: "Campo de asteroides", description: "Supera 150 asteroides", reward: 35, type: "asteroids", target: 150, difficult: true },
     { id: "clean-flight", title: "Vuelo limpio", description: "Llega a 30 puntos sin invencibilidad ni continuación", reward: 25, type: "clean-score", target: 30 },
     { id: "absolute-mastery", title: "Dominio absoluto", description: "Llega a 100 puntos sin invencibilidad ni continuación", reward: 100, type: "clean-score", target: 100, difficult: true },
-    { id: "devourer-devoured", title: "Devorador devorado", description: "Derrota al jefe por primera vez", reward: 60, type: "bosses", target: 1, difficult: true },
-    { id: "cosmic-nightmare", title: "Pesadilla cósmica", description: "Derrota al jefe en Difícil", reward: 100, type: "hard-bosses", target: 1, difficult: true },
+    { id: "easy-boss", title: "Cazador novato", description: "Derrota al jefe en Fácil", reward: 40, type: "boss-difficulty", difficulty: "easy", target: 1 },
+    { id: "normal-boss", title: "Devorador devorado", description: "Derrota al jefe en Normal", reward: 60, type: "boss-difficulty", difficulty: "normal", target: 1 },
+    { id: "cosmic-nightmare", title: "Pesadilla cósmica", description: "Derrota al jefe en Difícil", reward: 100, type: "boss-difficulty", difficulty: "hard", target: 1, difficult: true },
+    { id: "boss-trinity", title: "Conquistador cósmico", description: "Derrota al jefe en las tres dificultades", reward: 150, type: "all-bosses", target: 3, difficult: true },
     { id: "complete-pilot", title: "Piloto completo", description: "Llega a 60 puntos en las tres dificultades", reward: 40, type: "difficulty-mastery", target: 3, difficult: true },
     { id: "galactic-collector", title: "Coleccionista galáctico", description: "Consigue todas las naves disponibles", reward: 50, type: "skins", target: SKINS.length, difficult: true },
     { id: "national-pride", title: "Orgullo nacional", description: "Llega a 100 puntos en Difícil con Argentina o Venezuela", reward: 20, type: "national-score", target: 100, difficult: true },
@@ -262,6 +266,11 @@
       asteroidsPassed: number(value?.asteroidsPassed),
       bossesDefeated: number(value?.bossesDefeated),
       hardBossesDefeated: number(value?.hardBossesDefeated),
+      bossDefeatsByDifficulty: {
+        easy: number(value?.bossDefeatsByDifficulty?.easy),
+        normal: number(value?.bossDefeatsByDifficulty?.normal),
+        hard: Math.max(number(value?.bossDefeatsByDifficulty?.hard), number(value?.hardBossesDefeated)),
+      },
       cleanBestScore: number(value?.cleanBestScore),
       nationalBestScore: number(value?.nationalBestScore),
     };
@@ -375,6 +384,8 @@
   let nextAsteroidImageIndex = 0;
   let asteroidPending = false;
   let specialSpawnCooldown = 0;
+  const specialSpawnOrder = ["planet", "asteroid", "star"];
+  let specialSpawnCursor = 0;
   let asteroids = [];
   let bossActive = false;
   let bossCompleted = false;
@@ -393,6 +404,7 @@
   let adminUnlocked = false;
   let adminInfiniteInvincibility = false;
   const spriteCache = new Map();
+  const asteroidCropCache = new Map();
 
   const interfaceElement = document.getElementById("interface");
   const introElement = document.getElementById("intro-screen");
@@ -471,6 +483,8 @@
       case "clean-score": return stats.cleanBestScore;
       case "bosses": return stats.bossesDefeated;
       case "hard-bosses": return stats.hardBossesDefeated;
+      case "boss-difficulty": return stats.bossDefeatsByDifficulty[achievement.difficulty] || 0;
+      case "all-bosses": return Object.values(stats.bossDefeatsByDifficulty).filter((wins) => wins > 0).length;
       case "difficulty-mastery": return Object.keys(DIFFICULTIES).filter((difficulty) =>
         Math.max(profile.bestScores[difficulty], currentDifficulty === difficulty ? score : 0) >= 60).length;
       case "skins": return profile.ownedSkins.length;
@@ -522,10 +536,7 @@
     }
     const unlocked = ACHIEVEMENTS.filter((achievement) =>
       !profile.achievements.includes(achievement.id) && achievementProgress(achievement) >= achievement.target);
-    if (!unlocked.length) {
-      saveProfile();
-      return [];
-    }
+    if (!unlocked.length) return [];
     for (const achievement of unlocked) {
       profile.achievements.push(achievement.id);
       profile.credits += achievement.reward;
@@ -547,6 +558,16 @@
     subtitle.textContent = status === "loading"
       ? "Cargando ranking global..."
       : Array.isArray(globalEntries) ? "Mejores pilotos globales" : "Mejores pilotos de este dispositivo";
+    if (status === "loading") {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 3;
+      cell.className = "ranking-empty";
+      cell.textContent = "Cargando clasificación...";
+      row.append(cell);
+      body.append(row);
+      return;
+    }
     if (!entries.length) {
       const row = document.createElement("tr");
       const cell = document.createElement("td");
@@ -632,6 +653,7 @@
 
   function syncInterface() {
     refreshDailyAdCounter();
+    interfaceElement.dataset.state = state;
     document.getElementById("toolbar").hidden = ["loading", "intro", "name"].includes(state);
     introElement.hidden = state !== "intro";
     playerNameScreen.hidden = state !== "name";
@@ -665,6 +687,7 @@
     soundButton.setAttribute("aria-pressed", String(!profile.soundEnabled));
     soundButton.setAttribute("aria-label", profile.soundEnabled ? "Silenciar sonido" : "Activar sonido");
     document.getElementById("fullscreen-button").hidden = !document.documentElement.requestFullscreen;
+    document.getElementById("pause-button").hidden = state !== "playing";
     document.getElementById("final-score").textContent = String(score);
     document.getElementById("run-reward").textContent = `+${lastReward} monedas guardadas`;
     document.getElementById("shop-status").textContent = shopMessage && performance.now() < shopMessageUntil
@@ -781,6 +804,12 @@
       image: images[crop.imageName],
       ...crop,
     }));
+    // El recorte alfa de las imágenes 1254x1254 es costoso. Se prepara en la
+    // carga para que el primer asteroide no congele la partida.
+    for (const name of ASTEROID_IMAGE_NAMES) {
+      getSprite(name);
+      getSprite(`${name}Small`);
+    }
     await prepareScoreAudio();
     await document.fonts.load('74px "UFO Run"');
     applyBackground();
@@ -1041,6 +1070,38 @@
     window.setTimeout(() => password.focus(), 0);
   }
 
+  function bindAdminLongPress(element) {
+    const HOLD_DURATION_MS = 3000;
+    let timer = 0;
+    let pointerId = null;
+    const cancel = () => {
+      if (timer) window.clearTimeout(timer);
+      timer = 0;
+      pointerId = null;
+      element.classList.remove("holding");
+    };
+    element.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      cancel();
+      pointerId = event.pointerId;
+      element.setPointerCapture?.(pointerId);
+      element.classList.add("holding");
+      timer = window.setTimeout(() => {
+        timer = 0;
+        element.classList.remove("holding");
+        openAdmin();
+      }, HOLD_DURATION_MS);
+    });
+    for (const eventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
+      element.addEventListener(eventName, (event) => {
+        if (pointerId === null || event.pointerId === pointerId) cancel();
+      });
+    }
+    element.addEventListener("contextmenu", (event) => event.preventDefault());
+  }
+
   function unlockAdmin(rawPassword) {
     if (String(rawPassword) !== ADMIN_PASSWORD) {
       document.getElementById("admin-password-error").hidden = false;
@@ -1160,6 +1221,7 @@
     nextAsteroidImageIndex = 0;
     asteroidPending = false;
     specialSpawnCooldown = 0;
+    specialSpawnCursor = 0;
     asteroids = [];
     bossActive = false;
     bossWarningActive = false;
@@ -1230,8 +1292,8 @@
     rankingDifficulty = profile.difficulty;
     state = "ranking";
     accumulator = 0;
-    syncInterface();
     loadGlobalRanking(rankingDifficulty);
+    syncInterface();
     stopAudio(backgroundMusic, true);
     stopAudio(invincibilitySound, true);
   }
@@ -1255,8 +1317,8 @@
   function selectRankingDifficulty(difficulty) {
     if (!DIFFICULTIES[difficulty]) return;
     rankingDifficulty = difficulty;
-    syncInterface();
     loadGlobalRanking(difficulty);
+    syncInterface();
   }
 
   function toggleSound() {
@@ -1432,14 +1494,16 @@
 
   function trySpawnPendingSpecial() {
     if (specialItemActive() || specialSpawnCooldown > 0) return;
-    // Los asteroides tienen prioridad para que planetas y estrellas no los
-    // bloqueen indefinidamente en Normal y Difícil.
-    if (asteroidPending) {
-      activateAsteroid();
-    } else if (starPending) {
-      if (!invincible) activateStar();
-    } else if (planetPending) {
-      activateRandomPlanet();
+    const pending = { planet: planetPending, asteroid: asteroidPending, star: starPending && !invincible };
+    for (let offset = 0; offset < specialSpawnOrder.length; offset += 1) {
+      const index = (specialSpawnCursor + offset) % specialSpawnOrder.length;
+      const type = specialSpawnOrder[index];
+      if (!pending[type]) continue;
+      specialSpawnCursor = (index + 1) % specialSpawnOrder.length;
+      if (type === "planet") activateRandomPlanet();
+      else if (type === "asteroid") activateAsteroid();
+      else activateStar();
+      return;
     }
   }
 
@@ -1551,20 +1615,25 @@
       const sourceName = small ? name.slice(0, -5) : name;
       const targetSize = small ? MOBILE_PORTRAIT_ASTEROID_SIZE : ASTEROID_SIZE;
       const source = images[sourceName];
-      const scan = spriteSurface(source.width, source.height);
-      scan.getContext("2d").drawImage(source, 0, 0);
-      const data = scan.getContext("2d").getImageData(0, 0, source.width, source.height).data;
-      let left = source.width, right = 0, top = source.height, bottom = 0;
-      for (let y = 0; y < source.height; y += 1) {
-        for (let x = 0; x < source.width; x += 1) {
-          if (data[(y * source.width + x) * 4 + 3] > 100) {
-            left = Math.min(left, x); right = Math.max(right, x);
-            top = Math.min(top, y); bottom = Math.max(bottom, y);
+      let crop = asteroidCropCache.get(sourceName);
+      if (!crop) {
+        const scan = spriteSurface(source.width, source.height);
+        scan.getContext("2d").drawImage(source, 0, 0);
+        const data = scan.getContext("2d").getImageData(0, 0, source.width, source.height).data;
+        let left = source.width, right = 0, top = source.height, bottom = 0;
+        for (let y = 0; y < source.height; y += 1) {
+          for (let x = 0; x < source.width; x += 1) {
+            if (data[(y * source.width + x) * 4 + 3] > 100) {
+              left = Math.min(left, x); right = Math.max(right, x);
+              top = Math.min(top, y); bottom = Math.max(bottom, y);
+            }
           }
         }
+        crop = { left, top, width: right - left + 1, height: bottom - top + 1 };
+        asteroidCropCache.set(sourceName, crop);
       }
       surface = spriteSurface(targetSize, targetSize);
-      surface.getContext("2d").drawImage(source, left, top, right - left + 1, bottom - top + 1,
+      surface.getContext("2d").drawImage(source, crop.left, crop.top, crop.width, crop.height,
         0, 0, targetSize, targetSize);
     } else {
       surface = spriteSurface(POWERUP_SIZE, POWERUP_SIZE);
@@ -1675,6 +1744,10 @@
     return { width, height: width * aspect };
   }
 
+  function bossDurationFrames() {
+    return DIFFICULTIES[currentDifficulty].bossDurationSeconds * FPS;
+  }
+
   function startBossWarning() {
     if (bossWarningActive || bossActive || bossDefeatAnimating || bossCompleted ||
       score < DIFFICULTIES[currentDifficulty].bossTriggerScore) return false;
@@ -1769,7 +1842,7 @@
     bossDefeatAnimating = true;
     bossDefeatFrames = 0;
     bossProjectiles = [];
-    bossTimeFrames = BOSS_DURATION_FRAMES;
+    bossTimeFrames = bossDurationFrames();
   }
 
   function completeBossDefeat() {
@@ -1780,6 +1853,7 @@
     profile.credits += BOSS_COIN_REWARD;
     profile.achievementStats.bossesDefeated += 1;
     if (currentDifficulty === "hard") profile.achievementStats.hardBossesDefeated += 1;
+    profile.achievementStats.bossDefeatsByDifficulty[currentDifficulty] += 1;
     spikeCounter = 0;
     addFeedback(`¡JEFE SUPERADO! +${BOSS_SCORE_REWARD}`, WIDTH / 2, HEIGHT * 0.42, "#50dcff", 190);
     saveProfile();
@@ -1816,7 +1890,7 @@
     bossProjectiles = bossProjectiles.filter((projectile) => projectile.x + projectile.size >= -20 &&
       projectile.x <= WIDTH + 20 && projectile.y + projectile.size >= -20 && projectile.y <= HEIGHT + 20);
     bossTimeFrames += 1;
-    if (bossTimeFrames >= BOSS_DURATION_FRAMES && !hit) finishBossBattle();
+    if (bossTimeFrames >= bossDurationFrames() && !hit) finishBossBattle();
     return hit;
   }
 
@@ -1849,8 +1923,17 @@
     if (specialSpawnCooldown > 0) specialSpawnCooldown -= 1;
     jumpVelocity += GRAVITY;
     ufoY += jumpVelocity;
+    if (invincible) {
+      if (ufoY < 0) {
+        ufoY = 0;
+        jumpVelocity = Math.max(0, jumpVelocity);
+      } else if (ufoY + UFO_HEIGHT > HEIGHT) {
+        ufoY = HEIGHT - UFO_HEIGHT;
+        jumpVelocity = Math.min(0, jumpVelocity);
+      }
+    }
     const ufoRect = spriteRect(getUfoSprite(), UFO_X, ufoY);
-    let diedThisFrame = ufoRect.y < 0 || ufoRect.y + ufoRect.height > HEIGHT;
+    let diedThisFrame = !invincible && (ufoRect.y < 0 || ufoRect.y + ufoRect.height > HEIGHT);
 
     if (bossWarningActive) {
       diedThisFrame = updateBossWarning(ufoRect, portraitSpeedMultiplier) || diedThisFrame;
@@ -1925,7 +2008,8 @@
 
     if (powerupActive) {
       const star = { x: powerupX, y: powerupY, velocityY: powerupVelocityY };
-      moveFlyingItem(star, POWERUP_SIZE, POWERUP_SPEED * portraitSpeedMultiplier);
+      const starSpeed = Math.max(POWERUP_SPEED, spikeSpeed) * portraitSpeedMultiplier;
+      moveFlyingItem(star, POWERUP_SIZE, starSpeed);
       powerupX = star.x;
       powerupY = star.y;
       powerupVelocityY = star.velocityY;
@@ -1969,7 +2053,8 @@
 
     const asteroidWasActive = asteroids.length > 0;
     for (const asteroid of asteroids) {
-      moveFlyingItem(asteroid, asteroid.size, ASTEROID_SPEED * portraitSpeedMultiplier);
+      const asteroidSpeed = Math.max(ASTEROID_SPEED, spikeSpeed * 2) * portraitSpeedMultiplier;
+      moveFlyingItem(asteroid, asteroid.size, asteroidSpeed);
       if (!asteroid.counted && UFO_X > asteroid.x + asteroid.size) {
         asteroid.counted = true;
         profile.achievementStats.asteroidsPassed += 1;
@@ -2143,9 +2228,10 @@
       document.getElementById("invincible-label").hidden = !invincible;
       if (gameHud.textContent !== scoreLabel) gameHud.textContent = scoreLabel;
       if (bossActive) {
-        const remainingRatio = Math.max(0, (BOSS_DURATION_FRAMES - bossTimeFrames) / BOSS_DURATION_FRAMES);
+        const durationFrames = bossDurationFrames();
+        const remainingRatio = Math.max(0, (durationFrames - bossTimeFrames) / durationFrames);
         document.getElementById("boss-timer").textContent = `${Math.max(0,
-          Math.ceil((BOSS_DURATION_FRAMES - bossTimeFrames) / FPS))}s`;
+          Math.ceil((durationFrames - bossTimeFrames) / FPS))}s`;
         document.getElementById("boss-time-fill").style.transform = `scaleX(${remainingRatio})`;
       }
     }
@@ -2155,9 +2241,9 @@
     const elapsed = Math.min(now - previousTime, 100);
     previousTime = now;
 
-    if (state === "playing") {
+    if (state === "playing" && !gamePaused) {
       accumulator += elapsed;
-      while (accumulator >= FIXED_STEP_MS && state === "playing") {
+      while (accumulator >= FIXED_STEP_MS && state === "playing" && !gamePaused) {
         updateGame();
         accumulator -= FIXED_STEP_MS;
       }
@@ -2235,6 +2321,7 @@
     "continue-ad-button": handleContinueAd,
     "sound-button": toggleSound,
     "fullscreen-button": toggleFullscreen,
+    "pause-button": pauseGame,
     "skip-intro-button": finishIntro,
     "edit-name-button": beginNameEdit,
     "cancel-name-edit": () => closeDialog(document.getElementById("name-edit-dialog")),
@@ -2282,6 +2369,8 @@
     event.preventDefault();
     resumeGame();
   });
+  bindAdminLongPress(document.getElementById("menu-brand-logo"));
+  bindAdminLongPress(gameHud);
   resizeGame();
   if (window.ResizeObserver) {
     new ResizeObserver(resizeGame).observe(canvas);

@@ -44,7 +44,7 @@ p, h1, h2, figure { margin: 0; }
 .interface { padding-top: max(80px,calc(env(safe-area-inset-top) + 64px)); }
 .interface-footer { flex-shrink: 0; text-align: center; padding-top: 10px; }
 .game-status { position: absolute; top: max(52px,calc(env(safe-area-inset-top) + 38px)); left: max(20px,env(safe-area-inset-left)); pointer-events: none; font-size: 12px; color: #ffd648; text-shadow: 0 2px 5px #000; }
-.game-hud { position: absolute; top: max(16px,env(safe-area-inset-top)); left: max(20px,env(safe-area-inset-left)); pointer-events: none; color: var(--cyan); font-size: clamp(20px,3vw,30px); text-shadow: 0 2px 5px #000; }
+.game-hud { position: absolute; z-index: 6; top: max(10px,calc(env(safe-area-inset-top) + 6px)); left: max(12px,calc(env(safe-area-inset-left) + 4px)); padding: 8px; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; color: var(--cyan); font-size: clamp(20px,3vw,30px); text-shadow: 0 2px 5px #000; }
 .flight-start-prompt { position: absolute; z-index: 5; left: 50%; bottom: max(9vh,calc(env(safe-area-inset-bottom) + 30px)); width: min(86vw,560px); transform: translateX(-50%); padding: 14px 18px; border: 2px solid var(--cyan); border-radius: 12px; background: rgba(4,10,27,.92); color: #eef7ff; text-align: center; font-size: clamp(10px,1.8vw,15px); line-height: 1.6; pointer-events: none; box-shadow: 0 0 20px rgba(80,220,255,.22); }
 .boss-hud { position: absolute; z-index: 4; top: max(17px,env(safe-area-inset-top)); left: 50%; width: min(45vw,520px); transform: translateX(-50%); pointer-events: none; filter: drop-shadow(0 4px 8px #000); }
 .boss-hud-heading { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 7px; color: #f2eaff; font-size: clamp(9px,1.2vw,13px); letter-spacing: .08em; text-transform: uppercase; }
@@ -65,6 +65,7 @@ p, h1, h2, figure { margin: 0; }
 .icon-control { display: grid; place-items: center; width: 46px; padding: 9px; }
 .icon-control svg { width: 24px; height: 24px; stroke: currentColor; stroke-width: 2; fill: none; }
 #sound-button svg path:first-child { fill: currentColor; stroke-width: 1; }
+#pause-button svg path { fill: currentColor; stroke: none; }
 #sound-button[aria-pressed="true"] { color: #8395b6; }
 #sound-button[aria-pressed="true"] .sound-waves { opacity: .2; }
 .wallet { display: flex; align-items: center; justify-content: center; gap: 14px; border-color: #bba33c; border-radius: 22px; padding: 6px 18px; font-size: 20px; font-variant-numeric: tabular-nums; }
@@ -76,6 +77,8 @@ h1 { font-size: clamp(52px,7vw,94px); line-height: 1.05; letter-spacing: .05em; 
 h1 span { display: block; color: var(--cyan); }
 .tagline { color: #a1b8e4; font-size: clamp(11px,1.4vw,16px); margin-top: 14px; }
 .menu-brand-logo { position: absolute; z-index: 2; top: max(14px,env(safe-area-inset-top)); left: max(20px,env(safe-area-inset-left)); display: block; width: clamp(82px,8vw,116px); height: auto; object-fit: contain; }
+.admin-hold-target { touch-action: none; -webkit-user-drag: none; transition: filter .18s ease,transform .18s ease; }
+.admin-hold-target.holding { filter: brightness(1.45) drop-shadow(0 0 12px #ffd648); animation: admin-hold-pulse .6s ease-in-out infinite alternate; }
 .ship-preview { grid-column: 2; grid-row: 1 / 4; display: flex; flex-direction: column; align-items: center; gap: 20px; }
 .ship-preview img { width: clamp(130px,18vw,210px); height: auto; image-rendering: pixelated; filter: drop-shadow(0 0 18px rgba(80,220,255,.65)); animation: hover-ship 2.8s ease-in-out infinite; }
 .ship-preview figcaption { color: #40d27a; font-size: 16px; }
@@ -197,6 +200,7 @@ h2 { font-size: clamp(26px,4vw,44px); line-height: 1.2; }
 noscript { position: fixed; color: #fff; font-family: sans-serif; }
 @keyframes hover-ship { 50% { transform: translateY(-10px); } }
 @keyframes achievement-in { from { opacity: 0; transform: translate(-50%,-26px); } }
+@keyframes admin-hold-pulse { to { transform: scale(1.06); } }
 @media (prefers-reduced-motion: reduce) { .ship-preview img { animation: none; } .intro-panel { transition-duration: .01ms; } }
 
 /* Vertical: una columna y controles grandes, sin la restricción 4:3. */
@@ -327,4 +331,70 @@ noscript { position: fixed; color: #fff; font-family: sans-serif; }
   .menu-info { grid-column: 2; grid-row: 3; grid-template-columns: 1fr; gap: 12px; align-self: start; }
   .menu-info .instructions, .menu-info .record { width: min(100%,360px); justify-self: center; }
   .menu-footnote { grid-column: 1 / -1; grid-row: 4; }
+}
+
+/* El inicio siempre cabe en el viewport: se compacta por altura, sin scroll. */
+.interface[data-state="menu"] { overflow: hidden; }
+.interface[data-state="menu"] .menu-screen { height: 100%; min-height: 0; padding-top: 0; padding-bottom: 0; align-content: center; }
+
+@media (min-width: 701px) and (min-height: 551px) {
+  .interface[data-state="menu"] .menu-screen { gap: clamp(7px,1.6dvh,16px) clamp(24px,4vw,50px); }
+  .interface[data-state="menu"] h1 { font-size: clamp(42px,8dvh,72px); }
+  .interface[data-state="menu"] .tagline { margin-top: 7px; font-size: clamp(9px,1.45dvh,13px); }
+  .interface[data-state="menu"] .difficulty-selector { gap: 4px; }
+  .interface[data-state="menu"] .difficulty-options button { min-height: clamp(28px,4.5dvh,36px); padding: 4px; }
+  .interface[data-state="menu"] .menu-actions { gap: clamp(4px,.8dvh,7px); }
+  .interface[data-state="menu"] .menu-actions .action,
+  .interface[data-state="menu"] .menu-actions .primary { min-height: clamp(34px,5.7dvh,45px); padding: 7px 14px; font-size: clamp(13px,2.2dvh,18px); }
+  .interface[data-state="menu"] .ship-preview { gap: 8px; }
+  .interface[data-state="menu"] .ship-preview img { width: clamp(105px,22dvh,175px); }
+  .interface[data-state="menu"] .menu-info { gap: 12px; }
+  .interface[data-state="menu"] .instructions,
+  .interface[data-state="menu"] .record { min-height: 64px; padding: 9px 12px; }
+  .interface[data-state="menu"] .record strong { font-size: 30px; }
+}
+
+@media (orientation: portrait) and (max-width: 700px) {
+  .interface[data-state="menu"] { padding-top: max(58px,calc(env(safe-area-inset-top) + 52px)); padding-bottom: max(6px,env(safe-area-inset-bottom)); }
+  .interface[data-state="menu"] .menu-screen { gap: clamp(4px,1.15dvh,10px); }
+  .interface[data-state="menu"] h1 { font-size: clamp(34px,7dvh,58px); }
+  .interface[data-state="menu"] .tagline { margin-top: 4px; font-size: clamp(7px,1.5dvh,11px); }
+  .interface[data-state="menu"] .ship-preview { gap: 4px; }
+  .interface[data-state="menu"] .ship-preview img { width: clamp(70px,14dvh,112px); }
+  .interface[data-state="menu"] .ship-preview figcaption { font-size: clamp(8px,1.7dvh,11px); }
+  .interface[data-state="menu"] .difficulty-selector { gap: 3px; }
+  .interface[data-state="menu"] .difficulty-selector > p,
+  .interface[data-state="menu"] #difficulty-description { font-size: 7px; }
+  .interface[data-state="menu"] .difficulty-options button { min-height: clamp(26px,4.2dvh,34px); padding: 3px; font-size: 8px; }
+  .interface[data-state="menu"] .menu-actions { gap: clamp(3px,.7dvh,6px); }
+  .interface[data-state="menu"] .menu-actions .action,
+  .interface[data-state="menu"] .menu-actions .primary { min-height: clamp(32px,5.25dvh,44px); padding: 5px 10px; font-size: clamp(11px,2.2dvh,16px); }
+  .interface[data-state="menu"] .menu-info { grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 6px; }
+  .interface[data-state="menu"] .instructions,
+  .interface[data-state="menu"] .record { min-width: 0; min-height: 52px; padding: 6px; gap: 3px; font-size: 8px; }
+  .interface[data-state="menu"] .instructions span { font-size: 7px; }
+  .interface[data-state="menu"] .record strong { font-size: 22px; }
+  .interface[data-state="menu"] .menu-footnote { font-size: 7px; }
+}
+
+@media (orientation: landscape) and (max-height: 550px) {
+  .interface[data-state="menu"] .menu-screen { gap: clamp(3px,1.3dvh,7px) 24px; }
+  .interface[data-state="menu"] h1 { font-size: clamp(27px,11dvh,42px); }
+  .interface[data-state="menu"] .tagline { margin-top: 3px; font-size: 7px; }
+  .interface[data-state="menu"] .difficulty-selector { gap: 2px; }
+  .interface[data-state="menu"] .difficulty-selector > p,
+  .interface[data-state="menu"] #difficulty-description { font-size: 6px; }
+  .interface[data-state="menu"] .difficulty-options button { min-height: 24px; padding: 2px; font-size: 7px; }
+  .interface[data-state="menu"] .menu-actions { gap: 3px; }
+  .interface[data-state="menu"] .menu-actions .action,
+  .interface[data-state="menu"] .menu-actions .primary { min-height: clamp(26px,8dvh,34px); padding: 3px 9px; font-size: clamp(9px,3.2dvh,13px); }
+  .interface[data-state="menu"] .ship-preview { gap: 3px; }
+  .interface[data-state="menu"] .ship-preview img { width: clamp(66px,25dvh,100px); }
+  .interface[data-state="menu"] .ship-preview figcaption { font-size: 8px; }
+  .interface[data-state="menu"] .menu-info { gap: 5px; }
+  .interface[data-state="menu"] .instructions,
+  .interface[data-state="menu"] .record { min-height: 44px; padding: 4px 7px; gap: 2px; font-size: 7px; }
+  .interface[data-state="menu"] .instructions span { font-size: 6px; }
+  .interface[data-state="menu"] .record strong { font-size: 18px; }
+  .interface[data-state="menu"] .menu-footnote { font-size: 6px; }
 }

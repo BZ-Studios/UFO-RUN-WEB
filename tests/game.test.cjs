@@ -6,6 +6,7 @@ const vm = require("node:vm");
 
 const source = fs.readFileSync(path.join(__dirname, "../js/game.js"), "utf8");
 const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
+const css = fs.readFileSync(path.join(__dirname, "../css/styles.css"), "utf8");
 const achievementIds = [...source.match(/const ACHIEVEMENTS = \[([\s\S]*?)\n  \];/)[1]
   .matchAll(/id: "([^"]+)"/g)].map((match) => match[1]);
 const sprite = (width, height) => ({ width, height, mask: new Uint8Array(width * height).fill(1) });
@@ -72,10 +73,11 @@ function game(width = 390, height = 844, mobile = true, profileOverrides = {}) {
         specialSpawnCooldown = 0; asteroids = []; },
       expirePlanet: () => { planetX = -PLANET_SIZE - 1; },
       setScore: (value) => { score = value; },
+      setSpikeSpeed: (value) => { spikeSpeed = value; },
       setCredits: (value) => { profile.credits = value; syncInterface(); },
       bossProjectileAtPlayer: () => { bossProjectiles = [{ x: UFO_X, y: HEIGHT / 2,
         size: 22, velocityX: 0, velocityY: 0 }]; },
-      bossNearEnd: () => { bossTimeFrames = BOSS_DURATION_FRAMES - 1; bossProjectiles = []; },
+      bossNearEnd: () => { bossTimeFrames = bossDurationFrames() - 1; bossProjectiles = []; },
       bossWarningNearEnd: () => { bossWarningFrames = BOSS_WARNING_FRAMES - 1; },
       passed: (count) => { passedObstacles = count - 1;
         spikes = [{ topX: UFO_X - 102, bottomX: UFO_X - 102,
@@ -87,6 +89,7 @@ function game(width = 390, height = 844, mobile = true, profileOverrides = {}) {
       asteroidAtPlayer: () => { asteroids = [{ x: UFO_X + 10, y: HEIGHT / 2,
         velocityY: 1, imageName: "asteroid", spriteName: "asteroid", size: 64 }]; },
       endShield: () => { invincible = false; invincibleTime = 0; },
+      shieldAtBoundary: (position, velocity) => { invincible = true; ufoY = position; jumpVelocity = velocity; },
       effectAtEnd: () => { invincible = true; invincibleTime = invincibilityDurationFrames - 1; },
       starFar: () => { powerupActive = true; powerupX = WIDTH - 50;
         powerupY = 180; powerupVelocityY = 1; },
@@ -105,7 +108,7 @@ function game(width = 390, height = 844, mobile = true, profileOverrides = {}) {
         starPending, planetPending, asteroidPending, specialSpawnCooldown,
         bossActive, bossWarningActive, bossWarningFrames, bossWarningDurationFrames: BOSS_WARNING_FRAMES,
         bossCompleted, bossDefeatAnimating, bossDefeatFrames, bossTimeFrames,
-        bossDurationFrames: BOSS_DURATION_FRAMES, bossDefeatAnimationFrames: BOSS_DEFEAT_ANIMATION_FRAMES,
+        bossDurationFrames: bossDurationFrames(), bossDefeatAnimationFrames: BOSS_DEFEAT_ANIMATION_FRAMES,
         bossProjectiles: bossProjectiles.length,
         gamePaused, adminInfiniteInvincibility, achievements: [...profile.achievements],
         achievementStats: { ...profile.achievementStats },
@@ -181,11 +184,11 @@ test("Estrella cada 18 obstáculos y asteroide cada 10 desfasado 5", () => {
   before.api.passed(4); before.api.tick(); assert.equal(before.api.read().powerupActive, false);
   const firstAsteroid = game();
   firstAsteroid.api.passed(5); firstAsteroid.api.tick();
-  assert.equal(firstAsteroid.api.read().asteroids, 1);
+  assert.equal(firstAsteroid.api.read().asteroidPending, true); // El planeta pendiente conserva su turno.
   assert.equal(firstAsteroid.api.read().nextAsteroidAt, 15);
   const star = game();
   star.api.selectDifficulty("easy"); star.api.startGame();
-  star.api.passed(18); star.api.tick(); assert.equal(star.api.read().powerupActive, true);
+  star.api.passed(18); star.api.tick(); assert.equal(star.api.read().starPending, true);
   assert.equal(star.api.read().nextStarAt, 36);
 });
 
@@ -229,7 +232,7 @@ test("Las tres dificultades aplican sus reglas de velocidad y asteroides", () =>
 
   const hard = game(); hard.api.selectDifficulty("hard"); hard.api.startGame();
   hard.api.passed(3); hard.api.tick();
-  assert.equal(hard.api.read().difficulty, "hard"); assert.equal(hard.api.read().asteroids, 1);
+  assert.equal(hard.api.read().difficulty, "hard"); assert.equal(hard.api.read().asteroidPending, true);
   assert.equal(hard.api.read().nextAsteroidAt, 7.5);
 });
 
@@ -520,7 +523,7 @@ test("Se conserva separación móvil y estado al girar la pantalla", () => {
 });
 
 test("Los umbrales del jefe respetan cada dificultad", () => {
-  for (const [difficulty, threshold] of [["easy", 100], ["normal", 75], ["hard", 100]]) {
+  for (const [difficulty, threshold] of [["easy", 50], ["normal", 75], ["hard", 100]]) {
     const g = game(); g.api.selectDifficulty(difficulty); g.api.startGame();
     g.api.setScore(threshold - 1);
     assert.equal(g.api.startBossWarning(), false);
@@ -557,10 +560,69 @@ test("Los logros se guardan una sola vez y entregan su recompensa", () => {
   assert.equal(g.api.read().credits, 15);
 });
 
-test("El menú incluye los 20 logros y sus dos sonidos", () => {
-  assert.equal(achievementIds.length, 20);
+test("El menú incluye los 22 logros y sus dos sonidos", () => {
+  assert.equal(achievementIds.length, 22);
   assert(html.includes('id="achievements-button"'));
   assert(html.includes('id="achievements-screen"'));
   assert(source.includes('new Audio("src/musica/logro.mp3")'));
   assert(source.includes('new Audio("src/musica/logro-dificil.mp3")'));
+});
+
+test("La invencibilidad bloquea techo y suelo sin atravesarlos", () => {
+  const ceiling = game(); ceiling.api.shieldAtBoundary(-30, -5); ceiling.api.updateGame();
+  assert.equal(ceiling.api.read().state, "playing");
+  assert.equal(ceiling.api.read().ufoY, 0);
+  const floor = game(); floor.api.shieldAtBoundary(9999, 5); floor.api.updateGame();
+  assert.equal(floor.api.read().state, "playing");
+  assert.equal(floor.api.read().ufoY, floor.api.read().HEIGHT - 38);
+});
+
+test("El jefe dura 20, 30 y 40 segundos según la dificultad", () => {
+  for (const [difficulty, seconds] of [["easy", 20], ["normal", 30], ["hard", 40]]) {
+    const g = game(); g.api.selectDifficulty(difficulty); g.api.startGame();
+    assert.equal(g.api.read().bossDurationFrames, seconds * 80);
+  }
+});
+
+test("Cada jefe y la victoria en las tres dificultades tienen logro", () => {
+  const g = game(390, 844, true, { credits: 0, bestScore: 0,
+    bestScores: { easy: 0, normal: 0, hard: 0 }, achievements: [], achievementStats: {} });
+  for (const [difficulty, threshold] of [["easy", 50], ["normal", 75], ["hard", 100]]) {
+    g.api.selectDifficulty(difficulty); g.api.startGame(); g.api.setScore(threshold);
+    g.api.startBossBattle(); g.api.finishBossBattle();
+    for (let index = 0; index < g.api.read().bossDefeatAnimationFrames; index += 1) g.api.safeTick();
+  }
+  for (const id of ["easy-boss", "normal-boss", "cosmic-nightmare", "boss-trinity"]) {
+    assert(g.api.read().achievements.includes(id), id);
+  }
+});
+
+test("Los objetos especiales mantienen el ritmo cuando aumenta la velocidad", () => {
+  const g = game(); g.api.setSpikeSpeed(10);
+  g.api.clear(); g.api.activateStar(); const starBefore = g.api.read().powerupX; g.api.tick();
+  assert.equal(starBefore - g.api.read().powerupX,
+    10 * g.api.read().portraitSpeedMultiplier * g.api.read().WIDTH / 800);
+  g.api.clear(); g.api.activateAsteroid(); const asteroidBefore = g.api.read().asteroidItems[0].x; g.api.tick();
+  assert.equal(asteroidBefore - g.api.read().asteroidItems[0].x,
+    20 * g.api.read().portraitSpeedMultiplier * g.api.read().WIDTH / 800);
+});
+
+test("La pausa detiene el bucle y existe un control táctil", () => {
+  assert(source.includes('if (state === "playing" && !gamePaused) {\n      accumulator += elapsed;'));
+  assert(html.includes('id="pause-button"'));
+  assert(source.includes('"pause-button": pauseGame'));
+});
+
+test("El acceso admin móvil usa pulsación de 3 segundos en logo y puntaje", () => {
+  assert(source.includes("const HOLD_DURATION_MS = 3000"));
+  assert(source.includes('bindAdminLongPress(document.getElementById("menu-brand-logo"))'));
+  assert(source.includes("bindAdminLongPress(gameHud)"));
+  assert(html.includes('id="menu-brand-logo"'));
+  assert(html.includes('id="game-hud" class="game-hud admin-hold-target"'));
+});
+
+test("El menú no usa scroll y el ranking muestra carga estable", () => {
+  assert(css.includes('.interface[data-state="menu"] { overflow: hidden; }'));
+  assert(source.includes('cell.textContent = "Cargando clasificación..."'));
+  assert(/state = "ranking";[\s\S]{0,160}loadGlobalRanking\(rankingDifficulty\);\s+syncInterface\(\)/.test(source));
 });

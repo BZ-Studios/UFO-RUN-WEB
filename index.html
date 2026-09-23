@@ -46,7 +46,7 @@
       >
         Tu navegador no admite Canvas 2D.
       </canvas>
-      <p id="game-hud" class="game-hud" hidden>Puntaje: 0</p>
+      <p id="game-hud" class="game-hud admin-hold-target" title="Mantén presionado 3 segundos para acceder al panel admin" hidden>Puntaje: 0</p>
       <p id="invincible-label" class="game-status" hidden>INVENCIBLE</p>
       <p id="flight-start-prompt" class="flight-start-prompt" hidden>Toca, haz clic o pulsa Espacio para iniciar</p>
       <section id="boss-hud" class="boss-hud" aria-label="Batalla contra el jefe" hidden>
@@ -61,13 +61,14 @@
         <button id="back-button" class="control back-button" type="button" hidden>Volver</button>
         <div class="toolbar-actions">
           <span class="wallet" aria-label="Monedas disponibles"><span aria-hidden="true">✦</span> <span data-credits>0</span></span>
+          <button id="pause-button" class="control icon-control" type="button" aria-label="Pausar partida" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h4v16H7zM13 4h4v16h-4z"/></svg></button>
           <button id="sound-button" class="control icon-control" type="button" aria-label="Silenciar sonido" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h4l5-4v14l-5-4H3z"/><path class="sound-waves" d="M16 8q5 4 0 8M19 5q8 7 0 14"/></svg></button>
           <button id="fullscreen-button" class="control icon-control" type="button" aria-label="Pantalla completa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M3 15v6h6M21 15v6h-6"/></svg></button>
         </div>
       </header>
       <section id="interface" class="interface" aria-label="Interfaz de UFO RUN" hidden>
         <div id="menu-screen" class="screen menu-screen" hidden>
-          <img class="menu-brand-logo" src="src/Logo_bz.png" alt="B&amp;Z Studios">
+          <img id="menu-brand-logo" class="menu-brand-logo admin-hold-target" src="src/Logo_bz.png" alt="B&amp;Z Studios" title="Mantén presionado 3 segundos para acceder al panel admin">
           <div class="menu-heading"><h1>UFO <span>RUN</span></h1><p class="tagline">Vuela · Esquiva · Explora</p></div>
           <figure class="ship-preview"><img id="equipped-preview" src="src/ufo_principal.png" alt="Nave equipada"><figcaption id="equipped-name">Clásica</figcaption></figure>
           <div class="difficulty-selector" aria-label="Seleccionar dificultad">
@@ -102,11 +103,11 @@
             <article class="help-card"><img src="src/planetas/Tierra.png" alt="Planeta Tierra"><div><h3>Planetas</h3><p>Recoge cualquiera de los planetas para obtener 1 punto adicional.</p></div></article>
             <article class="help-card"><img src="src/powerup_star.png" alt="Estrella de invencibilidad"><div><h3>Estrella</h3><p>Activa cerca de 10 segundos de invencibilidad y repite su sonido a mitad del efecto.</p></div></article>
             <article class="help-card"><div class="help-asteroids"><img src="src/Obstaculos/Asteroide.png" alt="Asteroide"><img src="src/Obstaculos/asteroide_2.png" alt="Segundo asteroide"></div><div><h3>Asteroides</h3><p>Esquívalos: viajan muy rápido y destruyen la nave si no eres invencible.</p></div></article>
-            <article class="help-card"><img src="src/boss_cosmico.png" alt="Devorador cósmico"><div><h3>Jefe cósmico</h3><p>Aparece a los 75 puntos en Normal y a los 100 en Fácil o Difícil. Sobrevive 30 segundos a sus ataques.</p></div></article>
+            <article class="help-card"><img src="src/boss_cosmico.png" alt="Devorador cósmico"><div><h3>Jefe cósmico</h3><p>Fácil: 50 puntos y 20 s. Normal: 75 puntos y 30 s. Difícil: 100 puntos y 40 s.</p></div></article>
           </div>
         </div>
         <div id="achievements-screen" class="screen achievements-screen" hidden>
-          <div class="section-heading"><h2>🏆 Logros</h2><p><span id="achievement-count">0 / 20</span> desbloqueados</p></div>
+          <div class="section-heading"><h2>🏆 Logros</h2><p><span id="achievement-count">0 / 22</span> desbloqueados</p></div>
           <div id="achievements-grid" class="achievements-grid"></div>
         </div>
         <div id="ranking-screen" class="screen ranking-screen" hidden>
