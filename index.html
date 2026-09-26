@@ -42,11 +42,11 @@
         height="600"
         tabindex="0"
         role="application"
-        aria-label="UFO RUN. Juego arcade con tienda de naves. Usa espacio, clic o toque para saltar y recoge planetas para sumar un punto. Esquiva los pinchos y asteroides."
+        aria-label="UFO RUN. Juego arcade con tienda de naves. Usa espacio, clic o toque para saltar y recoge planetas para sumar un punto. Esquiva los pinchos y, en modo Difícil, los asteroides."
       >
         Tu navegador no admite Canvas 2D.
       </canvas>
-      <p id="game-hud" class="game-hud admin-hold-target" title="Mantén presionado 3 segundos para acceder al panel admin" hidden>Puntaje: 0</p>
+      <p id="game-hud" class="game-hud admin-hold-target" hidden>Puntaje: 0</p>
       <p id="invincible-label" class="game-status" hidden>INVENCIBLE</p>
       <p id="flight-start-prompt" class="flight-start-prompt" hidden>Toca, haz clic o pulsa Espacio para iniciar</p>
       <section id="boss-hud" class="boss-hud" aria-label="Batalla contra el jefe" hidden>
@@ -68,7 +68,7 @@
       </header>
       <section id="interface" class="interface" aria-label="Interfaz de UFO RUN" hidden>
         <div id="menu-screen" class="screen menu-screen" hidden>
-          <img id="menu-brand-logo" class="menu-brand-logo admin-hold-target" src="src/Logo_bz.png" alt="B&amp;Z Studios" title="Mantén presionado 3 segundos para acceder al panel admin">
+          <img id="menu-brand-logo" class="menu-brand-logo admin-hold-target" src="src/Logo_bz.png" alt="B&amp;Z Studios" draggable="false">
           <div class="menu-heading"><h1>UFO <span>RUN</span></h1><p class="tagline">Vuela · Esquiva · Explora</p></div>
           <figure class="ship-preview"><img id="equipped-preview" src="src/ufo_principal.png" alt="Nave equipada"><figcaption id="equipped-name">Clásica</figcaption></figure>
           <div class="difficulty-selector" aria-label="Seleccionar dificultad">
@@ -81,8 +81,7 @@
             <span id="difficulty-description">Experiencia original de UFO RUN</span>
           </div>
           <div class="menu-actions"><button id="play-button" class="action primary" type="button"><span aria-hidden="true">▶</span> Jugar</button><button id="shop-button" class="action secondary" type="button">Hangar</button><button id="achievements-button" class="action secondary" type="button">🏆 Logros</button><button id="help-button" class="action secondary" type="button">Ayuda</button><button id="ranking-button" class="action secondary" type="button">Ranking</button></div>
-          <div class="menu-info"><p class="instructions"><strong class="instructions-mobile">Toca para volar</strong><span class="instructions-mobile">Toca la pantalla para impulsarte</span><strong class="instructions-desktop">Espacio o clic</strong><span class="instructions-desktop">Para impulsarte</span></p><p class="record">Mejor puntaje<strong data-best-score>0</strong></p></div>
-          <p class="menu-footnote">Cada punto ganado se convierte en una moneda</p>
+          <div class="menu-info"><p class="instructions"><strong class="instructions-mobile">Toca para volar</strong><span class="instructions-mobile">Toca la pantalla para impulsarte</span><strong class="instructions-desktop">Espacio o clic</strong><span class="instructions-desktop">Para impulsarte</span></p><div class="record-column"><p class="record">Mejor puntaje<strong data-best-score>0</strong></p><p class="menu-footnote">Cada punto ganado se convierte en una moneda</p></div></div>
         </div>
         <div id="shop-screen" class="screen shop-screen" hidden>
           <div class="section-heading"><h2>Hangar</h2><p>Elige tu nave</p></div>
@@ -102,7 +101,7 @@
             <article class="help-card"><div class="help-boundaries" aria-hidden="true"><span></span><b>UFO</b><span></span></div><div><h3>Techo y suelo</h3><p>No salgas de la pantalla: tocar el techo o el suelo termina la misión.</p></div></article>
             <article class="help-card"><img src="src/planetas/Tierra.png" alt="Planeta Tierra"><div><h3>Planetas</h3><p>Recoge cualquiera de los planetas para obtener 1 punto adicional.</p></div></article>
             <article class="help-card"><img src="src/powerup_star.png" alt="Estrella de invencibilidad"><div><h3>Estrella</h3><p>Activa cerca de 10 segundos de invencibilidad y repite su sonido a mitad del efecto.</p></div></article>
-            <article class="help-card"><div class="help-asteroids"><img src="src/Obstaculos/Asteroide.png" alt="Asteroide"><img src="src/Obstaculos/asteroide_2.png" alt="Segundo asteroide"></div><div><h3>Asteroides</h3><p>Esquívalos: viajan muy rápido y destruyen la nave si no eres invencible.</p></div></article>
+            <article class="help-card"><div class="help-asteroids"><img src="src/Obstaculos/Asteroide.png" alt="Asteroide"><img src="src/Obstaculos/asteroide_2.png" alt="Segundo asteroide"></div><div><h3>Asteroides</h3><p>Solo aparecen en Difícil. Viajan muy rápido y destruyen la nave si no eres invencible.</p></div></article>
             <article class="help-card"><img src="src/boss_cosmico.png" alt="Devorador cósmico"><div><h3>Jefe cósmico</h3><p>Fácil: 50 puntos y 20 s. Normal: 75 puntos y 30 s. Difícil: 100 puntos y 40 s.</p></div></article>
           </div>
         </div>

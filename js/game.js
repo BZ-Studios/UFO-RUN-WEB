@@ -61,11 +61,11 @@
     normal: { name: "Normal", description: "Experiencia original de UFO RUN",
       initialSpeed: INITIAL_SPIKE_SPEED, initialFrequency: INITIAL_SPIKE_FREQUENCY,
       progressionEvery: 4, speedIncrement: 0.5, frequencyDecrease: 5,
-      asteroidInterval: ASTEROID_OBSTACLE_INTERVAL,
+      asteroidInterval: 0,
       mobilePortraitSpeedMultiplier: 1.25, mobilePortraitIntervalMultiplier: 1.55,
       bossTriggerScore: 75, bossDurationSeconds: 30,
       bossProjectileInterval: 90, bossProjectileSpeed: 4.2 },
-    hard: { name: "Difícil", description: "El doble de apariciones de asteroides",
+    hard: { name: "Difícil", description: "Incluye el campo de asteroides",
       initialSpeed: INITIAL_SPIKE_SPEED, initialFrequency: INITIAL_SPIKE_FREQUENCY,
       progressionEvery: 4, speedIncrement: 0.5, frequencyDecrease: 5,
       asteroidInterval: ASTEROID_OBSTACLE_INTERVAL / 2,
@@ -745,7 +745,7 @@
     const aspect = bounds.width / bounds.height;
     WIDTH = aspect < 1 ? 450 : 600 * aspect;
     HEIGHT = aspect < 1 ? 450 / aspect : 600;
-    UFO_X = WIDTH * 0.1875;
+    UFO_X = WIDTH * (mobilePortraitQuery.matches ? 0.115 : 0.1875);
     SPIKE_HEIGHT = Math.max(SPIKE_SOURCE_HEIGHT, Math.ceil(HEIGHT));
     const centerShift = (HEIGHT - oldHeight) / 2;
     ufoY = Math.max(1, Math.min(HEIGHT - UFO_HEIGHT, ufoY * HEIGHT / oldHeight));
@@ -1078,7 +1078,6 @@
       if (timer) window.clearTimeout(timer);
       timer = 0;
       pointerId = null;
-      element.classList.remove("holding");
     };
     element.addEventListener("pointerdown", (event) => {
       if (event.pointerType === "mouse" && event.button !== 0) return;
@@ -1087,10 +1086,8 @@
       cancel();
       pointerId = event.pointerId;
       element.setPointerCapture?.(pointerId);
-      element.classList.add("holding");
       timer = window.setTimeout(() => {
         timer = 0;
-        element.classList.remove("holding");
         openAdmin();
       }, HOLD_DURATION_MS);
     });
@@ -1099,7 +1096,10 @@
         if (pointerId === null || event.pointerId === pointerId) cancel();
       });
     }
-    element.addEventListener("contextmenu", (event) => event.preventDefault());
+    element.addEventListener("touchstart", (event) => event.preventDefault(), { passive: false });
+    for (const eventName of ["contextmenu", "dragstart", "selectstart"]) {
+      element.addEventListener(eventName, (event) => event.preventDefault());
+    }
   }
 
   function unlockAdmin(rawPassword) {
@@ -1468,12 +1468,24 @@
     return min + Math.random() * Math.max(0, max - min);
   }
 
-  function collectibleY(size) {
-    const ahead = spikes.filter((spike) => spike.topX > UFO_X)
-      .sort((a, b) => b.topX - a.topX)[0];
-    const min = ahead ? ahead.topY + SPIKE_HEIGHT + 12 : 60;
-    const max = ahead ? ahead.bottomY - size - 12 : HEIGHT - size - 60;
-    return randomBetween(Math.max(20, min), Math.min(HEIGHT - size - 20, max));
+  function safeGapY(spike, size, preferredY = null) {
+    const min = Math.max(20, spike.topY + SPIKE_HEIGHT + 12);
+    const max = Math.min(HEIGHT - size - 20, spike.bottomY - size - 12);
+    if (max < min) return Math.max(20, Math.min(HEIGHT - size - 20, (min + max) / 2));
+    return preferredY === null ? randomBetween(min, max) : Math.max(min, Math.min(max, preferredY));
+  }
+
+  function collectibleY(size, x = spawnFromRight(size)) {
+    const ahead = spikes.filter((spike) => spike.topX + SPIKE_WIDTH > UFO_X)
+      .sort((a, b) => Math.abs(a.topX - x) - Math.abs(b.topX - x))[0];
+    if (ahead) return safeGapY(ahead, size);
+    return randomBetween(60, HEIGHT - size - 60);
+  }
+
+  function keepCollectibleClearOfSpikes(x, y, size) {
+    const overlapping = spikes.filter((spike) => x < spike.topX + SPIKE_WIDTH && x + size > spike.topX)
+      .sort((a, b) => Math.abs(a.topX - x) - Math.abs(b.topX - x))[0];
+    return overlapping ? safeGapY(overlapping, size, y) : y;
   }
 
   function randomScreenY(size) {
@@ -1514,7 +1526,7 @@
     }
     currentPlanet = planetSprites[Math.floor(Math.random() * planetSprites.length)];
     planetX = spawnFromRight(PLANET_SIZE);
-    planetY = mobileLayoutQuery.matches ? randomScreenY(PLANET_SIZE) : collectibleY(PLANET_SIZE);
+    planetY = collectibleY(PLANET_SIZE, planetX);
     planetVelocityY = 0;
     planetActive = true;
     planetPending = false;
@@ -1570,6 +1582,10 @@
       moveDiagonal(item, size, speed);
       return;
     }
+    item.x -= speed * WIDTH / 800;
+  }
+
+  function moveHorizontalItem(item, speed) {
     item.x -= speed * WIDTH / 800;
   }
 
@@ -1731,10 +1747,22 @@
   function endInvincibility(rewindSound = true, force = false) {
     if (adminInfiniteInvincibility && !force) return;
     if (!invincible) return;
+    clampUfoToBounds(getUfoSprite());
     invincible = false;
     invincibleTime = 0;
     invincibilitySoundReplayed = false;
     if (rewindSound) stopAudio(invincibilitySound, true);
+  }
+
+  function clampUfoToBounds(sprite = getUfoSprite()) {
+    const maxY = Math.max(0, HEIGHT - sprite.height);
+    if (ufoY < 0) {
+      ufoY = 0;
+      jumpVelocity = Math.max(0, jumpVelocity);
+    } else if (ufoY > maxY) {
+      ufoY = maxY;
+      jumpVelocity = Math.min(0, jumpVelocity);
+    }
   }
 
   function bossDimensions() {
@@ -1746,6 +1774,12 @@
 
   function bossDurationFrames() {
     return DIFFICULTIES[currentDifficulty].bossDurationSeconds * FPS;
+  }
+
+  function bossTargetX(dimensions) {
+    return mobilePortraitQuery.matches
+      ? WIDTH - dimensions.width * 0.72
+      : WIDTH - dimensions.width + 18;
   }
 
   function startBossWarning() {
@@ -1870,7 +1904,7 @@
 
   function updateBossBattle(ufoRect) {
     const dimensions = bossDimensions();
-    const targetX = WIDTH - dimensions.width + 18;
+    const targetX = bossTargetX(dimensions);
     bossX += (targetX - bossX) * 0.045;
     bossY = Math.max(58, HEIGHT * 0.34 - dimensions.height / 2 + Math.sin(bossTimeFrames / 34) * 42);
     bossProjectileCounter += 1;
@@ -1895,6 +1929,7 @@
   }
 
   function finishGameplayUpdate(diedThisFrame) {
+    const protectedThisFrame = invincible;
     if (invincible && !adminInfiniteInvincibility) {
       invincibleTime += 1;
       if (!invincibilitySoundReplayed && invincibleTime >= invincibilitySoundFrames) {
@@ -1909,7 +1944,7 @@
     feedback.forEach((item) => { item.age += 1; });
     feedback = feedback.filter((item) => item.age < item.duration);
 
-    if (diedThisFrame) {
+    if (diedThisFrame && !protectedThisFrame) {
       playEffect(deathSound);
       finishFrameAsGameOver();
     }
@@ -1923,16 +1958,9 @@
     if (specialSpawnCooldown > 0) specialSpawnCooldown -= 1;
     jumpVelocity += GRAVITY;
     ufoY += jumpVelocity;
-    if (invincible) {
-      if (ufoY < 0) {
-        ufoY = 0;
-        jumpVelocity = Math.max(0, jumpVelocity);
-      } else if (ufoY + UFO_HEIGHT > HEIGHT) {
-        ufoY = HEIGHT - UFO_HEIGHT;
-        jumpVelocity = Math.min(0, jumpVelocity);
-      }
-    }
-    const ufoRect = spriteRect(getUfoSprite(), UFO_X, ufoY);
+    const ufoSprite = getUfoSprite();
+    if (invincible) clampUfoToBounds(ufoSprite);
+    const ufoRect = spriteRect(ufoSprite, UFO_X, ufoY);
     let diedThisFrame = !invincible && (ufoRect.y < 0 || ufoRect.y + ufoRect.height > HEIGHT);
 
     if (bossWarningActive) {
@@ -2009,7 +2037,7 @@
     if (powerupActive) {
       const star = { x: powerupX, y: powerupY, velocityY: powerupVelocityY };
       const starSpeed = Math.max(POWERUP_SPEED, spikeSpeed) * portraitSpeedMultiplier;
-      moveFlyingItem(star, POWERUP_SIZE, starSpeed);
+      moveHorizontalItem(star, starSpeed);
       powerupX = star.x;
       powerupY = star.y;
       powerupVelocityY = star.velocityY;
@@ -2033,6 +2061,7 @@
 
     if (planetActive) {
       planetX -= spikeSpeed * portraitSpeedMultiplier * WIDTH / 800;
+      planetY = keepCollectibleClearOfSpikes(planetX, planetY, PLANET_SIZE);
       if (opaqueOverlap(ufoRect, spriteRect(getPlanetSprite(), planetX, planetY))) {
         score += 1;
         profile.achievementStats.planetsCollected += 1;

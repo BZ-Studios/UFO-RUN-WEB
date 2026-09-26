@@ -60,7 +60,7 @@ function game(width = 390, height = 844, mobile = true, profileOverrides = {}) {
       resizeGame, startGame: () => { startGame(); flightStarted = true; },
       beginWaiting: () => { startGame(); }, jump,
       createSpikes, activateRandomPlanet, activateStar, activateAsteroid,
-      moveDiagonal, moveFlyingItem, showShop, showRanking, selectDifficulty, confirmPlayerName,
+      moveDiagonal, moveFlyingItem, moveHorizontalItem, showShop, showRanking, selectDifficulty, confirmPlayerName,
       startBossBattle, startBossWarning, finishBossBattle, pauseGame, resumeGame,
       beginNameEdit, confirmNameEdit, unlockAdmin, adminAddCoins, adminEnableInvincibility, adminTestBoss,
       handleCoinAd, handleContinueAd,
@@ -74,6 +74,11 @@ function game(width = 390, height = 844, mobile = true, profileOverrides = {}) {
       expirePlanet: () => { planetX = -PLANET_SIZE - 1; },
       setScore: (value) => { score = value; },
       setSpikeSpeed: (value) => { spikeSpeed = value; },
+      setPlanetSpawnGap: (topEdge, bottomEdge) => {
+        const x = spawnFromRight(PLANET_SIZE);
+        spikes = [{ topX: x, bottomX: x, topY: topEdge - SPIKE_HEIGHT,
+          bottomY: bottomEdge, counted: false }];
+      },
       setCredits: (value) => { profile.credits = value; syncInterface(); },
       bossProjectileAtPlayer: () => { bossProjectiles = [{ x: UFO_X, y: HEIGHT / 2,
         size: 22, velocityX: 0, velocityY: 0 }]; },
@@ -93,7 +98,7 @@ function game(width = 390, height = 844, mobile = true, profileOverrides = {}) {
       effectAtEnd: () => { invincible = true; invincibleTime = invincibilityDurationFrames - 1; },
       starFar: () => { powerupActive = true; powerupX = WIDTH - 50;
         powerupY = 180; powerupVelocityY = 1; },
-      read: () => ({ state, WIDTH, HEIGHT, ufoY, jumpVelocity, spikeHeight: SPIKE_HEIGHT, score, credits: profile.credits,
+      read: () => ({ state, WIDTH, HEIGHT, UFO_X, ufoY, jumpVelocity, spikeHeight: SPIKE_HEIGHT, score, credits: profile.credits,
         invincible, invincibleTime, invincibilityDurationFrames, continueUsed,
         invincibilityCountdown: Math.max(1, Math.ceil((invincibilityDurationFrames - invincibleTime) / FPS)),
         planetActive, planetX, planetY,
@@ -107,7 +112,8 @@ function game(width = 390, height = 844, mobile = true, profileOverrides = {}) {
         bestScores: { ...profile.bestScores }, flightStarted,
         starPending, planetPending, asteroidPending, specialSpawnCooldown,
         bossActive, bossWarningActive, bossWarningFrames, bossWarningDurationFrames: BOSS_WARNING_FRAMES,
-        bossCompleted, bossDefeatAnimating, bossDefeatFrames, bossTimeFrames,
+        bossCompleted, bossDefeatAnimating, bossDefeatFrames, bossTimeFrames, bossX,
+        bossWidth: bossDimensions().width, bossTargetX: bossTargetX(bossDimensions()),
         bossDurationFrames: bossDurationFrames(), bossDefeatAnimationFrames: BOSS_DEFEAT_ANIMATION_FRAMES,
         bossProjectiles: bossProjectiles.length,
         gamePaused, adminInfiniteInvincibility, achievements: [...profile.achievements],
@@ -179,13 +185,28 @@ test("Los planetas aparecen antes y varían su altura", () => {
   assert.notEqual(g.api.read().planetY, first);
 });
 
-test("Estrella cada 18 obstáculos y asteroide cada 10 desfasado 5", () => {
+test("Los planetas se mantienen dentro del hueco y no pisan los pinchos", () => {
+  const g = game();
+  g.api.clear(); g.api.setPlanetSpawnGap(190, 510); g.api.activateRandomPlanet();
+  let state = g.api.read();
+  assert(state.planetY >= 202);
+  assert(state.planetY + 80 <= 498);
+  g.api.tick(); state = g.api.read();
+  assert(state.planetY >= 202);
+  assert(state.planetY + 80 <= 498);
+});
+
+test("Estrella cada 18 obstáculos y asteroides exclusivos de Difícil", () => {
   const before = game();
   before.api.passed(4); before.api.tick(); assert.equal(before.api.read().powerupActive, false);
   const firstAsteroid = game();
+  firstAsteroid.api.selectDifficulty("hard"); firstAsteroid.api.startGame();
   firstAsteroid.api.passed(5); firstAsteroid.api.tick();
   assert.equal(firstAsteroid.api.read().asteroidPending, true); // El planeta pendiente conserva su turno.
-  assert.equal(firstAsteroid.api.read().nextAsteroidAt, 15);
+  assert.equal(firstAsteroid.api.read().nextAsteroidAt, 7.5);
+  const normal = game(); normal.api.passed(50); normal.api.tick();
+  assert.equal(normal.api.read().asteroidPending, false);
+  assert.equal(normal.api.read().asteroids, 0);
   const star = game();
   star.api.selectDifficulty("easy"); star.api.startGame();
   star.api.passed(18); star.api.tick(); assert.equal(star.api.read().starPending, true);
@@ -229,6 +250,9 @@ test("Las tres dificultades aplican sus reglas de velocidad y asteroides", () =>
   easy.api.passed(6); easy.api.tick();
   assert.equal(easy.api.read().spikeSpeed, 2.6); assert.equal(easy.api.read().spikeFrequency, 107);
   easy.api.clear(); easy.api.passed(20); easy.api.tick(); assert.equal(easy.api.read().asteroids, 0);
+
+  const normal = game(); normal.api.passed(30); normal.api.tick();
+  assert.equal(normal.api.read().asteroids, 0); assert.equal(normal.api.read().asteroidPending, false);
 
   const hard = game(); hard.api.selectDifficulty("hard"); hard.api.startGame();
   hard.api.passed(3); hard.api.tick();
@@ -456,7 +480,7 @@ test("El anuncio permite continuar una vez y no duplica monedas ya guardadas", a
   assert.equal(g.api.read().state, "gameover"); assert.equal(g.api.read().credits, 24);
 });
 
-test("En escritorio los planetas avanzan sólo en X; estrellas y asteroides conservan la diagonal", () => {
+test("En escritorio planetas y estrellas avanzan sólo en X; los asteroides conservan la diagonal", () => {
   const g = game(1280, 720, false);
   g.api.clear(); g.api.activateRandomPlanet();
   const planetBefore = g.api.read(); g.api.tick(); const planetAfter = g.api.read();
@@ -464,7 +488,7 @@ test("En escritorio los planetas avanzan sólo en X; estrellas y asteroides cons
   assert(planetAfter.planetX < planetBefore.planetX);
   g.api.clear(); g.api.activateStar();
   const starBefore = g.api.read(); g.api.tick(); const starAfter = g.api.read();
-  assert.notEqual(starAfter.powerupY, starBefore.powerupY);
+  assert.equal(starAfter.powerupY, starBefore.powerupY);
   g.api.clear(); g.api.activateAsteroid();
   const asteroidBefore = g.api.read().asteroidItems[0]; g.api.tick();
   assert.notEqual(g.api.read().asteroidItems[0].y, asteroidBefore.y);
@@ -483,6 +507,16 @@ test("Cada aparición móvil obtiene una altura aleatoria", () => {
   assert.notEqual(lowPlanet, highPlanet);
   assert.notEqual(lowStar, highStar);
   assert.notEqual(lowAsteroid, highAsteroid);
+});
+
+test("En vertical el UFO queda más a la izquierda y el jefe más a la derecha", () => {
+  const portrait = game(390, 844, true).api.read();
+  assert.equal(portrait.UFO_X, portrait.WIDTH * 0.115);
+  assert.equal(portrait.bossTargetX, portrait.WIDTH - portrait.bossWidth * 0.72);
+  assert(portrait.bossTargetX > portrait.WIDTH - portrait.bossWidth + 18);
+  const desktop = game(1280, 720, false).api.read();
+  assert.equal(desktop.UFO_X, desktop.WIDTH * 0.1875);
+  assert.equal(desktop.bossTargetX, desktop.WIDTH - desktop.bossWidth + 18);
 });
 
 test("Acabar invencibilidad no teletransporta otra estrella activa", () => {
@@ -577,6 +611,14 @@ test("La invencibilidad bloquea techo y suelo sin atravesarlos", () => {
   assert.equal(floor.api.read().ufoY, floor.api.read().HEIGHT - 38);
 });
 
+test("El último instante marcado de invencibilidad todavía protege al UFO", () => {
+  const g = game(); g.api.effectAtEnd(); g.api.asteroidAtPlayer(); g.api.tick();
+  assert.equal(g.api.read().state, "playing");
+  assert.equal(g.api.read().invincible, false);
+  g.api.asteroidAtPlayer(); g.api.tick();
+  assert.equal(g.api.read().state, "gameover");
+});
+
 test("El jefe dura 20, 30 y 40 segundos según la dificultad", () => {
   for (const [difficulty, seconds] of [["easy", 20], ["normal", 30], ["hard", 40]]) {
     const g = game(); g.api.selectDifficulty(difficulty); g.api.startGame();
@@ -619,6 +661,14 @@ test("El acceso admin móvil usa pulsación de 3 segundos en logo y puntaje", ()
   assert(source.includes("bindAdminLongPress(gameHud)"));
   assert(html.includes('id="menu-brand-logo"'));
   assert(html.includes('id="game-hud" class="game-hud admin-hold-target"'));
+  assert(!html.includes("Mantén presionado 3 segundos"));
+  assert(html.includes('draggable="false"'));
+  assert(css.includes("-webkit-touch-callout: none"));
+});
+
+test("El HUD móvil es compacto y la explicación de monedas está bajo el récord", () => {
+  assert(/@media \(orientation: portrait\)[\s\S]*?\.game-hud \{ padding: 6px; font-size: 14px; \}/.test(css));
+  assert(/class="record-column"[\s\S]*?class="record"[\s\S]*?class="menu-footnote"/.test(html));
 });
 
 test("El menú no usa scroll y el ranking muestra carga estable", () => {

@@ -77,8 +77,7 @@ h1 { font-size: clamp(52px,7vw,94px); line-height: 1.05; letter-spacing: .05em; 
 h1 span { display: block; color: var(--cyan); }
 .tagline { color: #a1b8e4; font-size: clamp(11px,1.4vw,16px); margin-top: 14px; }
 .menu-brand-logo { position: absolute; z-index: 2; top: max(14px,env(safe-area-inset-top)); left: max(20px,env(safe-area-inset-left)); display: block; width: clamp(82px,8vw,116px); height: auto; object-fit: contain; }
-.admin-hold-target { touch-action: none; -webkit-user-drag: none; transition: filter .18s ease,transform .18s ease; }
-.admin-hold-target.holding { filter: brightness(1.45) drop-shadow(0 0 12px #ffd648); animation: admin-hold-pulse .6s ease-in-out infinite alternate; }
+.admin-hold-target { touch-action: none; -webkit-user-drag: none; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
 .ship-preview { grid-column: 2; grid-row: 1 / 4; display: flex; flex-direction: column; align-items: center; gap: 20px; }
 .ship-preview img { width: clamp(130px,18vw,210px); height: auto; image-rendering: pixelated; filter: drop-shadow(0 0 18px rgba(80,220,255,.65)); animation: hover-ship 2.8s ease-in-out infinite; }
 .ship-preview figcaption { color: #40d27a; font-size: 16px; }
@@ -97,6 +96,7 @@ h1 span { display: block; color: var(--cyan); }
 .secondary { background: var(--panel); color: var(--purple); }
 .action:hover, .control:hover { border-color: var(--cyan); filter: brightness(1.2); }
 .menu-info { grid-column: 1 / -1; display: grid; grid-template-columns: 1.15fr .85fr; gap: 50px; align-items: center; }
+.record-column { display: flex; flex-direction: column; align-items: center; gap: 9px; min-width: 0; }
 .instructions { display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; border: 2px solid var(--border); border-radius: 12px; background: var(--panel); font-size: 14px; }
 .menu-info .instructions { width: min(100%,480px); }
 .instructions span { color: #9eb2d7; font-size: 12px; }
@@ -108,7 +108,7 @@ h1 span { display: block; color: var(--cyan); }
 }
 .record { display: flex; flex-direction: column; gap: 8px; align-items: center; min-width: 220px; padding: 14px 18px; border: 2px solid var(--border); border-radius: 12px; background: var(--panel); font-size: 15px; color: #e4edff; text-shadow: 0 2px 5px #000; }
 .record strong { color: var(--cyan); font-size: 42px; line-height: 1; text-shadow: 0 0 12px rgba(80,220,255,.38); }
-.menu-footnote { grid-column: 1 / -1; font-size: 11px; color: #93a9d2; text-align: center; }
+.menu-footnote { font-size: 11px; line-height: 1.5; color: #93a9d2; text-align: center; }
 .section-heading { text-align: center; margin-bottom: 24px; }
 h2 { font-size: clamp(26px,4vw,44px); line-height: 1.2; }
 .section-heading p { color: var(--cyan); font-size: 14px; margin-top: 10px; }
@@ -200,16 +200,16 @@ h2 { font-size: clamp(26px,4vw,44px); line-height: 1.2; }
 noscript { position: fixed; color: #fff; font-family: sans-serif; }
 @keyframes hover-ship { 50% { transform: translateY(-10px); } }
 @keyframes achievement-in { from { opacity: 0; transform: translate(-50%,-26px); } }
-@keyframes admin-hold-pulse { to { transform: scale(1.06); } }
 @media (prefers-reduced-motion: reduce) { .ship-preview img { animation: none; } .intro-panel { transition-duration: .01ms; } }
 
 /* Vertical: una columna y controles grandes, sin la restricción 4:3. */
 @media (orientation: portrait) and (max-width: 700px) {
+  .game-hud { padding: 6px; font-size: 14px; }
   .boss-hud { top: max(76px,calc(env(safe-area-inset-top) + 62px)); width: min(86vw,430px); }
   .boss-time-track { height: 13px; }
   .screen { max-width: 470px; padding: 20px 0; }
   .menu-screen { grid-template-columns: 1fr; gap: clamp(14px,2.5dvh,28px); text-align: center; max-width: 470px; margin: auto; }
-  .menu-heading, .ship-preview, .difficulty-selector, .menu-actions, .menu-info, .menu-footnote { grid-column: 1; grid-row: auto; }
+  .menu-heading, .ship-preview, .difficulty-selector, .menu-actions, .menu-info { grid-column: 1; grid-row: auto; }
   h1 { font-size: clamp(48px,15vw,78px); }
   h1 span { display: inline; }
   .tagline { font-size: clamp(10px,2.8vw,14px); margin-top: 12px; }
@@ -222,7 +222,8 @@ noscript { position: fixed; color: #fff; font-family: sans-serif; }
   .difficulty-options button { font-size: 10px; }
   .menu-info { grid-template-columns: 1fr; gap: 16px; }
   .instructions { padding: 12px; font-size: 13px; gap: 6px; }
-  .record { flex-direction: row; justify-content: center; gap: 18px; }
+  .record-column { width: 100%; gap: 7px; }
+  .record { width: 100%; flex-direction: row; justify-content: center; gap: 18px; }
   .record strong { font-size: 28px; }
   .menu-footnote { font-size: 10px; line-height: 1.5; }
   .shop-grid { gap: 12px; }
@@ -329,8 +330,7 @@ noscript { position: fixed; color: #fff; font-family: sans-serif; }
   .menu-actions .action { min-height: 46px; }
   .menu-actions .primary { min-height: 54px; }
   .menu-info { grid-column: 2; grid-row: 3; grid-template-columns: 1fr; gap: 12px; align-self: start; }
-  .menu-info .instructions, .menu-info .record { width: min(100%,360px); justify-self: center; }
-  .menu-footnote { grid-column: 1 / -1; grid-row: 4; }
+  .menu-info .instructions, .menu-info .record-column { width: min(100%,360px); justify-self: center; }
 }
 
 /* El inicio siempre cabe en el viewport: se compacta por altura, sin scroll. */
