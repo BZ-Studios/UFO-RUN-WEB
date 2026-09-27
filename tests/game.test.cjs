@@ -79,6 +79,12 @@ function game(width = 390, height = 844, mobile = true, profileOverrides = {}) {
         spikes = [{ topX: x, bottomX: x, topY: topEdge - SPIKE_HEIGHT,
           bottomY: bottomEdge, counted: false }];
       },
+      setAsteroidSpawnGap: (topEdge, bottomEdge) => {
+        const size = mobilePortraitQuery.matches ? MOBILE_PORTRAIT_ASTEROID_SIZE : ASTEROID_SIZE;
+        const x = spawnFromRight(size);
+        spikes = [{ topX: x, bottomX: x, topY: topEdge - SPIKE_HEIGHT,
+          bottomY: bottomEdge, counted: false }];
+      },
       setCredits: (value) => { profile.credits = value; syncInterface(); },
       bossProjectileAtPlayer: () => { bossProjectiles = [{ x: UFO_X, y: HEIGHT / 2,
         size: 22, velocityX: 0, velocityY: 0 }]; },
@@ -509,10 +515,23 @@ test("Cada aparición móvil obtiene una altura aleatoria", () => {
   assert.notEqual(lowAsteroid, highAsteroid);
 });
 
+test("En Difícil los asteroides evitan la abertura segura de los pinchos", () => {
+  const gapTop = 300;
+  const gapBottom = 600;
+  for (const randomValue of [0.15, 0.85]) {
+    const g = game();
+    g.api.selectDifficulty("hard"); g.api.startGame(); g.api.clear();
+    g.random(randomValue); g.api.setAsteroidSpawnGap(gapTop, gapBottom); g.api.activateAsteroid();
+    const asteroid = g.api.read().asteroidItems[0];
+    assert(asteroid.y + asteroid.size <= gapTop - 18 || asteroid.y >= gapBottom + 18);
+    assert(asteroid.maxY + asteroid.size <= gapTop - 18 || asteroid.minY >= gapBottom + 18);
+  }
+});
+
 test("En vertical el UFO queda más a la izquierda y el jefe más a la derecha", () => {
   const portrait = game(390, 844, true).api.read();
   assert.equal(portrait.UFO_X, portrait.WIDTH * 0.115);
-  assert.equal(portrait.bossTargetX, portrait.WIDTH - portrait.bossWidth * 0.72);
+  assert.equal(portrait.bossTargetX, portrait.WIDTH - portrait.bossWidth * 0.58);
   assert(portrait.bossTargetX > portrait.WIDTH - portrait.bossWidth + 18);
   const desktop = game(1280, 720, false).api.read();
   assert.equal(desktop.UFO_X, desktop.WIDTH * 0.1875);
@@ -532,6 +551,9 @@ test("Diagonal continua con rebote, sin teletransporte", () => {
   const { api } = game(); const item = { x: 300, y: 21, velocityY: -2 };
   api.moveDiagonal(item, 64, 4); assert(item.x < 300); assert.equal(item.y, 20);
   assert.equal(item.velocityY, 2); api.moveDiagonal(item, 64, 4); assert.equal(item.y, 22);
+  const laneItem = { x: 300, y: 99, velocityY: 4, minY: 40, maxY: 100 };
+  api.moveDiagonal(laneItem, 64, 4); assert.equal(laneItem.y, 100);
+  assert.equal(laneItem.velocityY, -4);
 });
 
 test("Asteroides matan, salvo durante invencibilidad", () => {
@@ -669,6 +691,13 @@ test("El acceso admin móvil usa pulsación de 3 segundos en logo y puntaje", ()
 test("El HUD móvil es compacto y la explicación de monedas está bajo el récord", () => {
   assert(/@media \(orientation: portrait\)[\s\S]*?\.game-hud \{ padding: 6px; font-size: 14px; \}/.test(css));
   assert(/class="record-column"[\s\S]*?class="record"[\s\S]*?class="menu-footnote"/.test(html));
+});
+
+test("Los avisos de logro son mínimos y la barra del jefe no tapa el HUD horizontal", () => {
+  assert(source.includes("const ACHIEVEMENT_TOAST_DURATION_MS = 2200"));
+  assert(css.includes(".achievement-toast span:not(.achievement-toast-icon) { display: none; }"));
+  assert(/@media \(pointer: coarse\)[\s\S]*?\.achievement-toast \{ top: auto; bottom:/.test(css));
+  assert(/@media \(orientation: landscape\) and \(max-height: 550px\) \{[\s\S]*?\.boss-hud \{[^}]*width: min\(30vw,240px\)/.test(css));
 });
 
 test("El menú no usa scroll y el ranking muestra carga estable", () => {

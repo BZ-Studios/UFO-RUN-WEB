@@ -51,14 +51,14 @@ p, h1, h2, figure { margin: 0; }
 .boss-hud-heading strong { color: #50dcff; }
 .boss-time-track { height: 15px; padding: 3px; border: 2px solid #aa6dff; border-radius: 999px; background: rgba(3,5,18,.88); box-shadow: 0 0 13px rgba(120,64,255,.7), inset 0 0 5px #000; overflow: hidden; }
 .boss-time-track span { display: block; width: 100%; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#6d31ff,#d23cff 48%,#36dcff); box-shadow: 0 0 9px #50dcff; transform-origin: left; }
-.achievement-toast { position: absolute; z-index: 20; top: max(82px,calc(env(safe-area-inset-top) + 70px)); left: 50%; display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: 14px; width: min(90vw,560px); padding: 15px 18px; border: 2px solid #ffd648; border-radius: 14px; background: linear-gradient(135deg,rgba(10,19,43,.98),rgba(45,24,70,.98)); box-shadow: 0 0 26px rgba(255,214,72,.32); transform: translate(-50%,0); animation: achievement-in .3s ease-out; pointer-events: none; }
+.achievement-toast { position: absolute; z-index: 20; top: max(76px,calc(env(safe-area-inset-top) + 64px)); left: 50%; display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: 9px; width: min(88vw,420px); padding: 10px 12px; border: 1px solid #ffd648; border-radius: 10px; background: linear-gradient(135deg,rgba(10,19,43,.98),rgba(45,24,70,.98)); box-shadow: 0 0 18px rgba(255,214,72,.28); transform: translate(-50%,0); animation: achievement-in .25s ease-out; pointer-events: none; }
 .achievement-toast.difficult { border-color: #d881ff; box-shadow: 0 0 30px rgba(216,129,255,.45); }
-.achievement-toast-icon { font-family: system-ui,sans-serif; font-size: 35px; filter: drop-shadow(0 0 8px rgba(255,214,72,.55)); }
-.achievement-toast div { display: flex; min-width: 0; flex-direction: column; gap: 5px; }
-.achievement-toast strong { color: #ffd648; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
-.achievement-toast b { color: #fff; font-size: clamp(13px,2vw,18px); }
-.achievement-toast span:not(.achievement-toast-icon) { color: #9eb2d7; font-size: 9px; line-height: 1.45; }
-.achievement-toast em { color: #55e58f; font-size: 10px; font-style: normal; }
+.achievement-toast-icon { font-family: system-ui,sans-serif; font-size: 24px; filter: drop-shadow(0 0 7px rgba(255,214,72,.5)); }
+.achievement-toast div { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.achievement-toast strong { color: #ffd648; font-size: 7px; letter-spacing: .12em; text-transform: uppercase; }
+.achievement-toast b { color: #fff; font-size: clamp(11px,1.5vw,14px); }
+.achievement-toast span:not(.achievement-toast-icon) { display: none; }
+.achievement-toast em { color: #55e58f; font-size: 8px; font-style: normal; }
 .toolbar-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-left: auto; }
 .control, .wallet { border: 2px solid var(--border); border-radius: 10px; background: var(--panel); box-shadow: 0 0 15px rgba(25,90,255,.2); min-height: 44px; }
 .control { padding: 8px 14px; font-size: 14px; color: var(--cyan); }
@@ -105,6 +105,11 @@ h1 span { display: block; color: var(--cyan); }
 @media (pointer: coarse), (max-width: 700px), (orientation: landscape) and (max-height: 550px) {
   .instructions-mobile { display: block; }
   .instructions-desktop { display: none; }
+  .achievement-toast { top: auto; bottom: max(12px,calc(env(safe-area-inset-bottom) + 8px)); gap: 7px; width: min(78vw,280px); padding: 7px 9px; border-radius: 8px; }
+  .achievement-toast-icon { font-size: 18px; }
+  .achievement-toast strong { display: none; }
+  .achievement-toast b { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+  .achievement-toast em { font-size: 7px; }
 }
 .record { display: flex; flex-direction: column; gap: 8px; align-items: center; min-width: 220px; padding: 14px 18px; border: 2px solid var(--border); border-radius: 12px; background: var(--panel); font-size: 15px; color: #e4edff; text-shadow: 0 2px 5px #000; }
 .record strong { color: var(--cyan); font-size: 42px; line-height: 1; text-shadow: 0 0 12px rgba(80,220,255,.38); }
@@ -245,6 +250,9 @@ noscript { position: fixed; color: #fff; font-family: sans-serif; }
 
 /* Horizontal móvil: distribución baja y cuatro naves en fila. */
 @media (orientation: landscape) and (max-height: 550px) {
+  .boss-hud { top: max(8px,env(safe-area-inset-top)); width: min(30vw,240px); }
+  .boss-hud-heading { gap: 6px; margin-bottom: 3px; font-size: 7px; }
+  .boss-time-track { height: 9px; padding: 2px; border-width: 1px; }
   .interface { padding-top: max(66px,calc(env(safe-area-inset-top) + 58px)); padding-bottom: max(8px,env(safe-area-inset-bottom)); }
   .toolbar { top: max(8px,env(safe-area-inset-top)); }
   .screen { padding: 12px 0; max-width: 950px; }

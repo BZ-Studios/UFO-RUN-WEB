@@ -44,6 +44,7 @@
   const DAILY_COIN_AD_LIMIT = 10;
   const SCORE_AUDIO_FALLBACK_OFFSET_SECONDS = 0.12;
   const SCORE_AUDIO_SILENCE_THRESHOLD = 0.012;
+  const ACHIEVEMENT_TOAST_DURATION_MS = 2200;
   const SPECIAL_SPAWN_COOLDOWN_FRAMES = 48;
   const BOSS_WARNING_FRAMES = FPS * 3;
   const BOSS_DEFEAT_ANIMATION_FRAMES = Math.round(FPS * 1.8);
@@ -522,7 +523,7 @@
       toast.hidden = true;
       achievementToastTimer = 0;
       showNextAchievement();
-    }, 3000);
+    }, ACHIEVEMENT_TOAST_DURATION_MS);
   }
 
   function checkAchievements() {
@@ -763,7 +764,13 @@
     planetY = Math.max(20, Math.min(HEIGHT - PLANET_SIZE - 20, planetY));
     for (const asteroid of asteroids) {
       asteroid.x *= WIDTH / oldWidth;
-      asteroid.y = Math.max(0, Math.min(HEIGHT - asteroid.size, asteroid.y + centerShift));
+      if (Number.isFinite(asteroid.minY) && Number.isFinite(asteroid.maxY)) {
+        asteroid.minY = Math.max(20, Math.min(HEIGHT - asteroid.size - 20, asteroid.minY + centerShift));
+        asteroid.maxY = Math.max(asteroid.minY,
+          Math.min(HEIGHT - asteroid.size - 20, asteroid.maxY + centerShift));
+      }
+      asteroid.y = Math.max(asteroid.minY ?? 0,
+        Math.min(asteroid.maxY ?? HEIGHT - asteroid.size, asteroid.y + centerShift));
     }
     bossX *= WIDTH / oldWidth;
     bossY += centerShift;
@@ -1553,9 +1560,13 @@
     const imageName = ASTEROID_IMAGE_NAMES[nextAsteroidImageIndex];
     nextAsteroidImageIndex = (nextAsteroidImageIndex + 1) % ASTEROID_IMAGE_NAMES.length;
     const size = mobilePortraitQuery.matches ? MOBILE_PORTRAIT_ASTEROID_SIZE : ASTEROID_SIZE;
+    const x = spawnFromRight(size);
+    const lane = asteroidSafeLane(size, x);
     asteroids.push({
-      x: spawnFromRight(size),
-      y: randomBetween(40, HEIGHT - size - 40),
+      x,
+      y: randomBetween(lane.minY, lane.maxY),
+      minY: lane.minY,
+      maxY: lane.maxY,
       velocityY: (Math.random() < 0.5 ? -1 : 1) * randomBetween(0.8, 1.4),
       imageName,
       spriteName: size === ASTEROID_SIZE ? imageName : `${imageName}Small`,
@@ -1565,14 +1576,34 @@
     asteroidPending = false;
   }
 
+  function asteroidSafeLane(size, x) {
+    const margin = 18;
+    const screenMinY = 20;
+    const screenMaxY = Math.max(screenMinY, HEIGHT - size - 20);
+    const nearestSpike = spikes
+      .filter((spike) => spike.topX + SPIKE_WIDTH > UFO_X)
+      .sort((left, right) => Math.abs(left.topX - x) - Math.abs(right.topX - x))[0];
+    const gapTop = nearestSpike ? nearestSpike.topY + SPIKE_HEIGHT : HEIGHT * 0.38;
+    const gapBottom = nearestSpike ? nearestSpike.bottomY : HEIGHT * 0.62;
+    const lanes = [];
+    const topMaxY = Math.min(screenMaxY, gapTop - size - margin);
+    const bottomMinY = Math.max(screenMinY, gapBottom + margin);
+    if (topMaxY >= screenMinY) lanes.push({ minY: screenMinY, maxY: topMaxY });
+    if (bottomMinY <= screenMaxY) lanes.push({ minY: bottomMinY, maxY: screenMaxY });
+    if (!lanes.length) return { minY: screenMinY, maxY: screenMaxY };
+    return lanes[Math.floor(Math.random() * lanes.length)];
+  }
+
   function moveDiagonal(item, size, speed) {
+    const minY = Number.isFinite(item.minY) ? item.minY : 20;
+    const maxY = Number.isFinite(item.maxY) ? item.maxY : HEIGHT - size - 20;
     item.x -= speed * WIDTH / 800;
     item.y += item.velocityY;
-    if (item.y < 20) {
-      item.y = 20;
+    if (item.y < minY) {
+      item.y = minY;
       item.velocityY = Math.abs(item.velocityY);
-    } else if (item.y > HEIGHT - size - 20) {
-      item.y = HEIGHT - size - 20;
+    } else if (item.y > maxY) {
+      item.y = maxY;
       item.velocityY = -Math.abs(item.velocityY);
     }
   }
@@ -1778,7 +1809,7 @@
 
   function bossTargetX(dimensions) {
     return mobilePortraitQuery.matches
-      ? WIDTH - dimensions.width * 0.72
+      ? WIDTH - dimensions.width * 0.58
       : WIDTH - dimensions.width + 18;
   }
 
