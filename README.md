@@ -31,7 +31,7 @@ La tienda incluye seis naves, incluidas las skins Venezuela y Argentina. Las ski
 
 ## Herramientas de prueba
 
-Pulsa `F2` y usa la contraseña de pruebas para abrir el panel admin. En móvil el acceso permanece oculto y se activa manteniendo presionado durante 3 segundos el logo de B&Z en el menú o el contador de puntaje durante una partida; el segundo dedo continúa controlando la nave. Desde allí puedes agregar 100 monedas, alternar invencibilidad infinita o iniciar directamente una partida de prueba contra el jefe. Abrir el panel durante una partida pausa el juego.
+Pulsa `F2` y usa la contraseña de pruebas para abrir el panel admin. En móvil el acceso permanece oculto y se activa manteniendo presionado durante 3 segundos el logo de B&Z en el menú o el contador de puntaje durante una partida; el segundo dedo continúa controlando la nave. Desde allí puedes agregar 100.000 monedas, alternar invencibilidad infinita o iniciar directamente una partida de prueba contra el jefe. Abrir el panel durante una partida pausa el juego.
 
 ## Integración de anuncios
 

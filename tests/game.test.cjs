@@ -456,7 +456,9 @@ test("El panel F2 exige 9701 y ofrece herramientas de prueba", () => {
   assert.equal(g.api.adminAddCoins(), false);
   assert.equal(g.api.unlockAdmin("9701"), true);
   assert.equal(g.api.adminAddCoins(), true);
-  assert.equal(g.api.read().credits, 122);
+  assert.equal(g.api.read().credits, 100022);
+  assert.equal(g.nodes.get("admin-status").textContent, "+100.000 monedas agregadas.");
+  assert(html.includes('id="admin-add-coins" type="button">+100.000 monedas</button>'));
   assert.equal(g.api.adminEnableInvincibility(), true);
   assert.equal(g.api.read().invincible, true);
   assert.equal(g.api.adminTestBoss(), true);
@@ -703,6 +705,7 @@ test("El HUD móvil es compacto y la explicación de monedas está bajo el réco
 });
 
 test("Las tarjetas informativas del menú vertical son simétricas", () => {
+  assert(css.includes(".instructions { display: flex; flex-direction: column; align-items: center; justify-content: center;"));
   assert(/@media \(orientation: portrait\) and \(max-width: 700px\)[\s\S]*?\.interface\[data-state="menu"\] \.menu-info \{[^}]*align-items: start/.test(css));
   assert(/\.interface\[data-state="menu"\] \.instructions,\s*\n\s*\.interface\[data-state="menu"\] \.record \{[^}]*width: 100%;[^}]*height: 52px/.test(css));
 });

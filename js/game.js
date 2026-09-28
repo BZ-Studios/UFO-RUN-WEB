@@ -52,6 +52,7 @@
   const BOSS_SCORE_REWARD = 10;
   const BOSS_COIN_REWARD = 50;
   const NAME_CHANGE_COST = 100;
+  const ADMIN_COIN_GRANT = 100000;
   const ADMIN_PASSWORD = "9701";
   const DIFFICULTIES = {
     easy: { name: "Fácil", description: "Sin asteroides, velocidad y aumento más suaves",
@@ -1138,10 +1139,10 @@
 
   function adminAddCoins() {
     if (!adminUnlocked) return false;
-    profile.credits += 100;
+    profile.credits += ADMIN_COIN_GRANT;
     saveProfile();
     syncInterface();
-    document.getElementById("admin-status").textContent = "+100 monedas agregadas.";
+    document.getElementById("admin-status").textContent = "+100.000 monedas agregadas.";
     return true;
   }
 
