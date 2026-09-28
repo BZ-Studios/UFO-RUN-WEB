@@ -734,6 +734,7 @@ test("Los puntajes desde 100.000 usan abreviaturas progresivas", () => {
   assert.equal(api.formatPoints(1500000), "1,5M");
   assert.equal(api.formatPoints(2000000000), "2B");
   assert(source.includes('const scoreLabel = "Puntaje: " + formatPoints(score)'));
+  assert(source.includes("element.textContent = formatPoints(profile.credits)"));
 });
 
 test("Los avisos de logro son mínimos y la barra del jefe no tapa el HUD horizontal", () => {

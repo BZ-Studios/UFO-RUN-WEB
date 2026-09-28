@@ -688,7 +688,7 @@
       interfaceState = state;
     }
     document.querySelectorAll("[data-credits]").forEach((element) => {
-      element.textContent = String(profile.credits);
+      element.textContent = formatPoints(profile.credits);
     });
     document.querySelectorAll("[data-best-score]").forEach((element) => {
       const difficulty = ["playing", "gameover"].includes(state) ? currentDifficulty : profile.difficulty;

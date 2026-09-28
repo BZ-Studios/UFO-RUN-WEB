@@ -21,7 +21,7 @@ Versión web de UFO RUN, un juego arcade de estética pixel-art espacial.
 - La invencibilidad evita el daño del techo y el suelo sin permitir que la nave atraviese los límites del escenario.
 - El menú principal se adapta a la altura disponible para mantenerse completo en pantalla sin desplazamiento vertical.
 - En móvil horizontal, una pantalla intermedia solicita activar el modo de pantalla completa antes de continuar y pausa una partida en curso mientras se realiza el cambio.
-- Desde 100.000 puntos, los marcadores se muestran de forma compacta con sufijos como `K`, `M`, `B` y `T`.
+- Desde 100.000 puntos o monedas, los marcadores se muestran de forma compacta con sufijos como `K`, `M`, `B` y `T`.
 
 ## Portada promocional
 
