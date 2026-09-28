@@ -28,6 +28,7 @@
     "(pointer: coarse), (max-width: 700px), (orientation: landscape) and (max-height: 550px)",
   );
   const mobilePortraitQuery = window.matchMedia("(orientation: portrait) and (max-width: 700px)");
+  const mobileLandscapeQuery = window.matchMedia("(orientation: landscape) and (max-height: 550px)");
 
   const POWERUP_SIZE = 50;
   const POWERUP_SPEED = 4;
@@ -77,12 +78,12 @@
 
 
   const PROFILE_STORAGE_KEY = "ufoRunProfileV1";
-  const COUNTRY_SKIN_COST = 48;
+  const COUNTRY_SKIN_COST = 480;
   const SKINS = [
     { id: "classic", name: "CLASICA", imageName: "ufo", deadImageName: "ufoGreenDead", cost: 0, accent: "rgb(64, 210, 122)" },
-    { id: "nova", name: "NOVA ROJA", imageName: "ufoRed", deadImageName: "ufoRedDead", cost: 12, accent: "rgb(235, 74, 80)" },
-    { id: "solar", name: "SOLAR", imageName: "ufoYellow", deadImageName: "ufoYellowDead", cost: 24, accent: "rgb(255, 205, 62)" },
-    { id: "pulsar", name: "PULSAR AZUL", imageName: "ufoBlue", deadImageName: "ufoBlueDead", cost: 36, accent: "rgb(68, 154, 255)" },
+    { id: "nova", name: "NOVA ROJA", imageName: "ufoRed", deadImageName: "ufoRedDead", cost: 120, accent: "rgb(235, 74, 80)" },
+    { id: "solar", name: "SOLAR", imageName: "ufoYellow", deadImageName: "ufoYellowDead", cost: 240, accent: "rgb(255, 205, 62)" },
+    { id: "pulsar", name: "PULSAR AZUL", imageName: "ufoBlue", deadImageName: "ufoBlueDead", cost: 360, accent: "rgb(68, 154, 255)" },
     { id: "venezuela", name: "VENEZUELA", imageName: "ufoVenezuela", deadImageName: "ufoVenezuelaDead", cost: COUNTRY_SKIN_COST, accent: "rgb(255, 205, 62)" },
     { id: "argentina", name: "ARGENTINA", imageName: "ufoArgentina", deadImageName: "ufoArgentinaDead", cost: COUNTRY_SKIN_COST, accent: "rgb(107, 207, 246)" },
   ];
@@ -216,6 +217,7 @@
   let introTimers = [];
   let gamePaused = false;
   let pauseOwner = "";
+  let fullscreenGatePausedGame = false;
   let nameEditPaymentConfirmed = false;
   let achievementToastTimer = 0;
   const achievementQueue = [];
@@ -230,6 +232,18 @@
   function cleanPlayerName(value) {
     const cleaned = String(value || "").trim().replace(/[^\p{L}\p{N} _-]/gu, "").slice(0, 12);
     return cleaned || "PILOTO";
+  }
+
+  function formatPoints(value) {
+    const points = Math.max(0, Math.trunc(Number(value) || 0));
+    if (points < 100000) return String(points);
+    const units = ["", "K", "M", "B", "T", "Q"];
+    const unitIndex = Math.min(Math.floor(Math.log10(points) / 3), units.length - 1);
+    const scaled = points / 1000 ** unitIndex;
+    const decimals = scaled >= 100 ? 0 : scaled >= 10 ? 1 : 2;
+    const factor = 10 ** decimals;
+    const compact = Math.floor(scaled * factor) / factor;
+    return `${String(compact).replace(".", ",")}${units[unitIndex]}`;
   }
 
   function normalizeRankings(value) {
@@ -581,9 +595,9 @@
     }
     entries.forEach((entry, index) => {
       const row = document.createElement("tr");
-      for (const value of [index + 1, entry.name, entry.score]) {
+      for (const [columnIndex, value] of [index + 1, entry.name, entry.score].entries()) {
         const cell = document.createElement("td");
-        cell.textContent = String(value);
+        cell.textContent = columnIndex === 2 ? formatPoints(value) : String(value);
         row.append(cell);
       }
       body.append(row);
@@ -677,7 +691,7 @@
     });
     document.querySelectorAll("[data-best-score]").forEach((element) => {
       const difficulty = ["playing", "gameover"].includes(state) ? currentDifficulty : profile.difficulty;
-      element.textContent = String(profile.bestScores[difficulty]);
+      element.textContent = formatPoints(profile.bestScores[difficulty]);
     });
     const skin = selectedSkin();
     document.getElementById("equipped-preview").src = imageSources[skin.imageName];
@@ -687,9 +701,9 @@
     const soundButton = document.getElementById("sound-button");
     soundButton.setAttribute("aria-pressed", String(!profile.soundEnabled));
     soundButton.setAttribute("aria-label", profile.soundEnabled ? "Silenciar sonido" : "Activar sonido");
-    document.getElementById("fullscreen-button").hidden = !document.documentElement.requestFullscreen;
+    document.getElementById("fullscreen-button").hidden = !fullscreenRequestAvailable();
     document.getElementById("pause-button").hidden = state !== "playing";
-    document.getElementById("final-score").textContent = String(score);
+    document.getElementById("final-score").textContent = formatPoints(score);
     document.getElementById("run-reward").textContent = `+${lastReward} monedas guardadas`;
     document.getElementById("shop-status").textContent = shopMessage && performance.now() < shopMessageUntil
       ? shopMessage : "Gana monedas superando obstáculos";
@@ -735,6 +749,7 @@
       elements.button.setAttribute("aria-label", equipped ? `${skin.name} equipada` : owned
         ? `Equipar ${skin.name}` : `Comprar ${skin.name} por ${skin.cost} monedas`);
     }
+    syncLandscapeFullscreenGate();
   }
 
   function resizeGame() {
@@ -790,6 +805,7 @@
     canvas.width = Math.round(bounds.width * pixelRatio);
     canvas.height = Math.round(bounds.height * pixelRatio);
     context.setTransform(canvas.width / WIDTH, 0, 0, canvas.height / HEIGHT, 0, 0);
+    syncLandscapeFullscreenGate();
   }
 
   function loadImage(source) {
@@ -1187,6 +1203,7 @@
     closeDialog(document.getElementById("admin-panel-dialog"));
     gamePaused = false;
     pauseOwner = "";
+    fullscreenGatePausedGame = false;
     scoreAudioContext?.resume().catch(() => {});
     if (gamesStarted > 0) {
       backgroundIndex = (backgroundIndex + 1) % backgroundSources.length;
@@ -1261,7 +1278,7 @@
     checkAchievements();
 
     stopAudio(invincibilitySound, true);
-    playAudio(backgroundMusic, true);
+    if (!gamePaused) playAudio(backgroundMusic, true);
     canvas.focus({ preventScroll: true });
   }
 
@@ -1271,6 +1288,7 @@
     closeDialog(document.getElementById("admin-panel-dialog"));
     gamePaused = false;
     pauseOwner = "";
+    fullscreenGatePausedGame = false;
     state = "menu";
     syncInterface();
     accumulator = 0;
@@ -1340,11 +1358,56 @@
     }
   }
 
-  function toggleFullscreen() {
-    if (document.fullscreenElement) {
-      document.exitFullscreen?.().catch(() => {});
-    } else {
-      document.documentElement.requestFullscreen?.().catch(() => {});
+  function fullscreenRequestAvailable() {
+    return Boolean(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+  }
+
+  function fullscreenActive() {
+    return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+  }
+
+  function syncLandscapeFullscreenGate() {
+    const gate = document.getElementById("landscape-fullscreen-gate");
+    if (!gate) return;
+    const shouldShow = mobileLandscapeQuery.matches && fullscreenRequestAvailable() && !fullscreenActive() &&
+      !["loading", "intro", "name"].includes(state);
+    if (shouldShow && state === "playing" && !gamePaused) {
+      gamePaused = true;
+      pauseOwner = "fullscreen";
+      fullscreenGatePausedGame = true;
+      accumulator = 0;
+      stopAudio(backgroundMusic);
+      stopAudio(invincibilitySound);
+    } else if (!shouldShow && fullscreenGatePausedGame) {
+      if (state === "playing" && gamePaused && pauseOwner === "fullscreen") {
+        gamePaused = false;
+        pauseOwner = "";
+        accumulator = 0;
+        if (profile.soundEnabled) {
+          playAudio(backgroundMusic);
+          if (invincible && !adminInfiniteInvincibility) playAudio(invincibilitySound);
+        }
+      }
+      fullscreenGatePausedGame = false;
+    }
+    gate.hidden = !shouldShow;
+  }
+
+  async function toggleFullscreen() {
+    try {
+      if (fullscreenActive()) {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) await exit.call(document);
+      } else {
+        const request = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
+        if (!request) return false;
+        await request.call(document.documentElement);
+      }
+      return true;
+    } catch (_error) {
+      return false;
+    } finally {
+      syncLandscapeFullscreenGate();
     }
   }
 
@@ -2284,7 +2347,7 @@
     if (state === "playing" && !gamePaused) {
       drawFeedback();
       drawBossWarning();
-      const scoreLabel = "Puntaje: " + score;
+      const scoreLabel = "Puntaje: " + formatPoints(score);
       document.getElementById("invincible-label").hidden = !invincible;
       if (gameHud.textContent !== scoreLabel) gameHud.textContent = scoreLabel;
       if (bossActive) {
@@ -2381,6 +2444,7 @@
     "continue-ad-button": handleContinueAd,
     "sound-button": toggleSound,
     "fullscreen-button": toggleFullscreen,
+    "landscape-fullscreen-button": toggleFullscreen,
     "pause-button": pauseGame,
     "skip-intro-button": finishIntro,
     "edit-name-button": beginNameEdit,
@@ -2431,6 +2495,9 @@
   });
   bindAdminLongPress(document.getElementById("menu-brand-logo"));
   bindAdminLongPress(gameHud);
+  document.addEventListener("fullscreenchange", syncLandscapeFullscreenGate);
+  document.addEventListener("webkitfullscreenchange", syncLandscapeFullscreenGate);
+  mobileLandscapeQuery.addEventListener?.("change", syncLandscapeFullscreenGate);
   resizeGame();
   if (window.ResizeObserver) {
     new ResizeObserver(resizeGame).observe(canvas);

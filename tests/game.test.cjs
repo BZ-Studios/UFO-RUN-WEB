@@ -37,8 +37,9 @@ function game(width = 390, height = 844, mobile = true, profileOverrides = {}) {
   const math = Object.create(Math);
   math.random = () => random;
   const browserWindow = { devicePixelRatio: 1,
-    matchMedia: (query) => ({ matches: query.includes("orientation: portrait")
-      ? mobile && height > width : mobile }), setTimeout() {}, clearTimeout() {},
+    matchMedia: (query) => ({ matches: query === "(orientation: portrait) and (max-width: 700px)"
+      ? mobile && height > width : query === "(orientation: landscape) and (max-height: 550px)"
+        ? mobile && width > height : mobile }), setTimeout() {}, clearTimeout() {},
     ufoRunShowRewardedAd: async ({ placement }) => {
       rewardedAdCalls.push(placement); return rewardedAdResult;
     } };
@@ -64,7 +65,7 @@ function game(width = 390, height = 844, mobile = true, profileOverrides = {}) {
       startBossBattle, startBossWarning, finishBossBattle, pauseGame, resumeGame,
       beginNameEdit, confirmNameEdit, unlockAdmin, adminAddCoins, adminEnableInvincibility, adminTestBoss,
       handleCoinAd, handleContinueAd,
-      opaqueOverlap, spriteRect, finishFrameAsGameOver, updateGame, findAudioStartOffset,
+      opaqueOverlap, spriteRect, finishFrameAsGameOver, updateGame, findAudioStartOffset, formatPoints,
       tick: () => { ufoY = HEIGHT / 2; jumpVelocity = -GRAVITY; updateGame(); },
       safeTick: () => { ufoY = HEIGHT / 2; jumpVelocity = -GRAVITY; invincible = true;
         invincibleTime = 0; updateGame(); },
@@ -163,6 +164,14 @@ test("Cada skin tiene variante muerta y las skins de países cuestan lo mismo", 
   assert(source.includes("dead ? selectedSkin().deadImageName"));
   assert(!source.includes("COLOR_CHANGE_FREQUENCY"));
   assert(!source.includes("colorIndex"));
+});
+
+test("Los precios del Hangar están multiplicados por diez", () => {
+  assert(source.includes("const COUNTRY_SKIN_COST = 480"));
+  for (const cost of [120, 240, 360]) assert(source.includes(`cost: ${cost}`));
+  assert(!source.includes('cost: 12,'));
+  assert(!source.includes('cost: 24,'));
+  assert(!source.includes('cost: 36,'));
 });
 
 test("La intro incluye marca B&Z y créditos en el orden solicitado", () => {
@@ -691,6 +700,37 @@ test("El acceso admin móvil usa pulsación de 3 segundos en logo y puntaje", ()
 test("El HUD móvil es compacto y la explicación de monedas está bajo el récord", () => {
   assert(/@media \(orientation: portrait\)[\s\S]*?\.game-hud \{ padding: 6px; font-size: 14px; \}/.test(css));
   assert(/class="record-column"[\s\S]*?class="record"[\s\S]*?class="menu-footnote"/.test(html));
+});
+
+test("Las tarjetas informativas del menú vertical son simétricas", () => {
+  assert(/@media \(orientation: portrait\) and \(max-width: 700px\)[\s\S]*?\.interface\[data-state="menu"\] \.menu-info \{[^}]*align-items: start/.test(css));
+  assert(/\.interface\[data-state="menu"\] \.instructions,\s*\n\s*\.interface\[data-state="menu"\] \.record \{[^}]*width: 100%;[^}]*height: 52px/.test(css));
+});
+
+test("Horizontal móvil exige pantalla completa con un botón central", () => {
+  assert(html.includes('id="landscape-fullscreen-gate"'));
+  assert(html.includes('id="landscape-fullscreen-button"'));
+  assert(css.includes(".landscape-fullscreen-gate { position: absolute; z-index: 40; inset: 0; display: grid; place-items: center;"));
+  assert(source.includes('pauseOwner = "fullscreen"'));
+  assert(source.includes('document.addEventListener("fullscreenchange", syncLandscapeFullscreenGate)'));
+});
+
+test("Las descripciones de estrella y jefe explican la jugabilidad", () => {
+  assert(html.includes("Mientras brillas, los obstáculos no pueden destruir tu nave."));
+  assert(html.includes("El Devorador Cósmico despierta para la batalla final."));
+  assert(!html.includes("repite su sonido a mitad del efecto"));
+  assert(!html.includes("Fácil: 50 puntos y 20 s."));
+});
+
+test("Los puntajes desde 100.000 usan abreviaturas progresivas", () => {
+  const { api } = game();
+  assert.equal(api.formatPoints(99999), "99999");
+  assert.equal(api.formatPoints(100000), "100K");
+  assert.equal(api.formatPoints(999999), "999K");
+  assert.equal(api.formatPoints(1000000), "1M");
+  assert.equal(api.formatPoints(1500000), "1,5M");
+  assert.equal(api.formatPoints(2000000000), "2B");
+  assert(source.includes('const scoreLabel = "Puntaje: " + formatPoints(score)'));
 });
 
 test("Los avisos de logro son mínimos y la barra del jefe no tapa el HUD horizontal", () => {

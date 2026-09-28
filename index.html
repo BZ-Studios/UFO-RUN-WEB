@@ -46,6 +46,14 @@
       >
         Tu navegador no admite Canvas 2D.
       </canvas>
+      <section id="landscape-fullscreen-gate" class="landscape-fullscreen-gate" role="dialog" aria-modal="true" aria-labelledby="landscape-fullscreen-title" hidden>
+        <div class="landscape-fullscreen-card">
+          <span aria-hidden="true">↔</span>
+          <h2 id="landscape-fullscreen-title">Pantalla horizontal</h2>
+          <p>Activa la pantalla completa para jugar sin cortes ni controles del navegador.</p>
+          <button id="landscape-fullscreen-button" class="action primary" type="button">Jugar en pantalla completa</button>
+        </div>
+      </section>
       <p id="game-hud" class="game-hud admin-hold-target" hidden>Puntaje: 0</p>
       <p id="invincible-label" class="game-status" hidden>INVENCIBLE</p>
       <p id="flight-start-prompt" class="flight-start-prompt" hidden>Toca, haz clic o pulsa Espacio para iniciar</p>
@@ -100,9 +108,9 @@
             <article class="help-card"><div class="help-spikes" aria-hidden="true"><img src="src/Pincho_alto.png" alt=""><img src="src/Pincho_bajo.png" alt=""></div><div><h3>Pinchos</h3><p>Atraviesa el espacio central sin tocar los bordes. Cada par superado suma 1 punto.</p></div></article>
             <article class="help-card"><div class="help-boundaries" aria-hidden="true"><span></span><b>UFO</b><span></span></div><div><h3>Techo y suelo</h3><p>No salgas de la pantalla: tocar el techo o el suelo termina la misión.</p></div></article>
             <article class="help-card"><img src="src/planetas/Tierra.png" alt="Planeta Tierra"><div><h3>Planetas</h3><p>Recoge cualquiera de los planetas para obtener 1 punto adicional.</p></div></article>
-            <article class="help-card"><img src="src/powerup_star.png" alt="Estrella de invencibilidad"><div><h3>Estrella</h3><p>Activa cerca de 10 segundos de invencibilidad y repite su sonido a mitad del efecto.</p></div></article>
+            <article class="help-card"><img src="src/powerup_star.png" alt="Estrella de invencibilidad"><div><h3>Estrella</h3><p>Te vuelve invencible por unos segundos. Mientras brillas, los obstáculos no pueden destruir tu nave.</p></div></article>
             <article class="help-card"><div class="help-asteroids"><img src="src/Obstaculos/Asteroide.png" alt="Asteroide"><img src="src/Obstaculos/asteroide_2.png" alt="Segundo asteroide"></div><div><h3>Asteroides</h3><p>Solo aparecen en Difícil. Viajan muy rápido y destruyen la nave si no eres invencible.</p></div></article>
-            <article class="help-card"><img src="src/boss_cosmico.png" alt="Devorador cósmico"><div><h3>Jefe cósmico</h3><p>Fácil: 50 puntos y 20 s. Normal: 75 puntos y 30 s. Difícil: 100 puntos y 40 s.</p></div></article>
+            <article class="help-card"><img src="src/boss_cosmico.png" alt="Devorador cósmico"><div><h3>Jefe cósmico</h3><p>El Devorador Cósmico despierta para la batalla final. Esquiva sus ráfagas hasta agotar su energía y reclamar la victoria.</p></div></article>
           </div>
         </div>
         <div id="achievements-screen" class="screen achievements-screen" hidden>

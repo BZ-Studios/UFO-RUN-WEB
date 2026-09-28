@@ -6,7 +6,7 @@ Versión web de UFO RUN, un juego arcade de estética pixel-art espacial.
 
 - `Espacio`, clic o toque: iniciar la partida e impulsar el UFO. La física espera el primer impulso antes de comenzar.
 - Esquiva los pinchos y asteroides diagonales; cada planeta suma un punto. Estrellas, planetas y asteroides ajustan su velocidad al ritmo actual de la partida para no quedarse atrás cuando aumenta la dificultad.
-- Usa la estrella para obtener invencibilidad durante dos reproducciones consecutivas de su sonido; la cuenta regresiva aparece sobre la nave durante todo el efecto.
+- Usa la estrella para volverte invencible durante unos segundos; la cuenta regresiva aparece sobre la nave durante todo el efecto.
 - Los planetas aparecen cada 3 obstáculos y las estrellas cada 18. Los asteroides aparecen únicamente en Difícil; sus dos variantes se intercalan en cada aparición.
 - Planetas, estrellas y asteroides entran progresivamente desde fuera del borde derecho y aparecen de uno en uno mediante una cola rotativa que distribuye sus apariciones. Planetas y estrellas avanzan siempre en horizontal; los asteroides también lo hacen en móvil y rebotan en diagonal en escritorio. Los planetas se colocan dentro del hueco libre para no superponerse con los pinchos. Las variantes de asteroide se preparan durante la carga para evitar tirones en su primera aparición.
 - Hay tres dificultades: Fácil suaviza la velocidad, Normal conserva el ritmo original sin asteroides y Difícil incorpora el campo de asteroides.
@@ -20,12 +20,14 @@ Versión web de UFO RUN, un juego arcade de estética pixel-art espacial.
 - El menú de logros reúne 22 retos permanentes con progreso, recompensa automática en monedas y alertas pixel-art acompañadas por sonidos normal y difícil. Incluye un logro por vencer al jefe en cada dificultad y otro difícil por derrotarlo en las tres.
 - La invencibilidad evita el daño del techo y el suelo sin permitir que la nave atraviese los límites del escenario.
 - El menú principal se adapta a la altura disponible para mantenerse completo en pantalla sin desplazamiento vertical.
+- En móvil horizontal, una pantalla intermedia solicita activar el modo de pantalla completa antes de continuar y pausa una partida en curso mientras se realiza el cambio.
+- Desde 100.000 puntos, los marcadores se muestran de forma compacta con sufijos como `K`, `M`, `B` y `T`.
 
 ## Portada promocional
 
 La [portada de UFO RUN](src/ufo-run-cover.png) está lista para utilizarse en la página principal de Byz. El [prompt y las referencias](docs/ufo-run-cover.md) quedan documentados.
 
-La tienda incluye seis naves, incluidas las skins Venezuela y Argentina. Las skins de países cuestan 48 monedas y cada nave conserva sus colores cuando queda destruida.
+La tienda incluye seis naves, incluidas las skins Venezuela y Argentina. Las skins de países cuestan 480 monedas y cada nave conserva sus colores cuando queda destruida.
 
 ## Herramientas de prueba
 
