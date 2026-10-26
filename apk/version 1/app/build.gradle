@@ -1,0 +1,42 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.bzstudios.uforun'
+    compileSdk 36
+    buildToolsVersion '36.0.0'
+
+    defaultConfig {
+        applicationId 'com.bzstudios.uforun'
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName '1.0.0'
+    }
+    sourceSets.main.assets.srcDirs = ['../web']
+    buildFeatures { buildConfig true }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    buildTypes {
+        release { minifyEnabled false }
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.14.0'
+}
+
+tasks.register('exportApk') {
+    dependsOn 'assembleDebug'
+    def installer = layout.buildDirectory.file('outputs/apk/debug/app-debug.apk')
+    inputs.file installer
+    outputs.file rootProject.layout.projectDirectory.file('UFO-RUN-v1.0.0.apk')
+    doLast {
+        copy {
+            from installer
+            into rootProject.projectDir
+            rename { 'UFO-RUN-v1.0.0.apk' }
+        }
+    }
+}
