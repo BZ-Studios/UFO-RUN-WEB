@@ -2,11 +2,13 @@
 
 Generadas con la herramienta de imágenes integrada (no API/CLI), tomando como referencias `src/ufo-run-cover.png` y `ufo-crazygames/src/loading-cover.webp`. Se crearon tres composiciones, no tres recortes de una sola imagen. Exportadas a las dimensiones exactas mediante un ajuste mecánico con Sharp (nearest-neighbour para conservar bordes pixel art).
 
-Los archivos finales están en `publishing/crazygames/covers/`, fuera del paquete jugable para no aumentar su descarga:
+Para subir al portal, usa las copias de la carpeta `src crazygames/` en la raíz del proyecto, fuera del paquete jugable para no aumentar su descarga. Sus medidas se verificaron leyendo las dimensiones del PNG, no solo el nombre:
 
-- `ufo-run-landscape-1920x1080.png`
-- `ufo-run-portrait-800x1200.png`
-- `ufo-run-square-800x800.png`
+- Horizontal: `src crazygames/horizontal-1920x1080.png` (1920×1080 exactos).
+- Vertical: `src crazygames/vertical-800x1200.png` (800×1200 exactos).
+- Cuadrada: `src crazygames/cuadrada-800x800.png` (800×800 exactos).
+
+Las mismas imágenes permanecen archivadas en `publishing/crazygames/covers/`. No subas las previsualizaciones generadas de 1672×941: no cumplen el tamaño horizontal exigido. Tampoco uses `loading-cover.webp`, que es el fondo de carga del juego y no una portada del portal.
 
 Subir cada imagen al campo con la proporción correspondiente. No sustituyen los archivos del juego. No es necesario volver a subir el juego por estas portadas.
 
