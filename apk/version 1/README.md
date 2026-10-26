@@ -36,7 +36,7 @@ Para actualizaciones instalables sin perder progreso deben conservarse el identi
 
 ## Verificación de esta entrega
 
-- `:app:exportApk` y `:app:lintDebug`: compilación correcta, sin errores de lint. Queda una advertencia informativa por fijar target SDK 36 en lugar de la API más reciente.
+- `:app:exportApk` y `:app:lintDebug`: compilación correcta, sin errores de lint. El reporte conserva advertencias informativas de compatibilidad; no equivalen a una prueba en un teléfono real.
 - Firma de depuración APK Signature Scheme v2 verificada con `apksigner`; alineación verificada con `zipalign`.
 - Los 44 archivos de `web/` coinciden byte a byte con los recursos incluidos en el APK.
 - Guardado, nombre, pantallas, controles, pausa al salir al fondo y retorno explícito comprobados en simulación Chrome del origen HTTPS local, en 390×844, 844×390 y 800×600.
