@@ -1,0 +1,241 @@
+{
+  "version": "2.0.0",
+  "builtAt": "2026-10-27T12:19:51.711Z",
+  "entry": "index.html",
+  "orientation": "landscape",
+  "basicLaunch": true,
+  "fileCount": 46,
+  "totalBytes": 6915506,
+  "files": [
+    {
+      "path": "css/styles.css",
+      "bytes": 24135,
+      "sha256": "d64af8e528cc9b30130db5ec6991638f192f97d1fd2a1587fe7e933cf42d50ef"
+    },
+    {
+      "path": "index.html",
+      "bytes": 14095,
+      "sha256": "b557d69333240d799a873dd60dd2678294dd281df30fcfe50443bb86187d93a4"
+    },
+    {
+      "path": "js/crazy-config.js",
+      "bytes": 208,
+      "sha256": "78a1325acf7a3ec5d33ce392ce88664ac5f6e7db11edd747463dc3d2d460b363"
+    },
+    {
+      "path": "js/crazy-sdk.js",
+      "bytes": 5483,
+      "sha256": "6d2956c0c9fc77a1d3e0a2e9fba171cb3bb426fb7da65f3ebf571ec5677760ee"
+    },
+    {
+      "path": "js/flight-rules.js",
+      "bytes": 4217,
+      "sha256": "31bc9506641a2724185559875b410770206c3591db80f973a9984e5889d07d36"
+    },
+    {
+      "path": "js/game.js",
+      "bytes": 99385,
+      "sha256": "bcade0e4fe6f371d7f3d8cebc1d2c5b91f04c1b43be1fbcf4ba0c44d5e2078a9"
+    },
+    {
+      "path": "js/loading.js",
+      "bytes": 1702,
+      "sha256": "c546c79ab5cc163ba41f4d092f5f9f859e80c6b61ba26dba45b3f4b025158da3"
+    },
+    {
+      "path": "src/Fondo-2.png",
+      "bytes": 759435,
+      "sha256": "89b073e289cd39be9095304928e728be22974a649ead0517c9e6a8ee5c3ba259"
+    },
+    {
+      "path": "src/Fondo-3.png",
+      "bytes": 439825,
+      "sha256": "233206e818cb50d166a0b6f60792874de42056c33029df9f855b1f11ec0b4bd6"
+    },
+    {
+      "path": "src/Logo_bz.png",
+      "bytes": 96743,
+      "sha256": "3208590d90d7ec3964df6296e6f6730fab88b20227a23155f89c024be521b6bc"
+    },
+    {
+      "path": "src/Obstaculos/Asteroide.png",
+      "bytes": 5880,
+      "sha256": "f712ebdf4f685321db69560101d2e2b81ff9a85341b7c63f553d21fca33c7766"
+    },
+    {
+      "path": "src/Obstaculos/asteroide_2.png",
+      "bytes": 5596,
+      "sha256": "b510c45d0555baa2b6a2d8d1de1d241f053e1a5dd89cb701b3bc38036ef44841"
+    },
+    {
+      "path": "src/Pincho_alto.png",
+      "bytes": 3599,
+      "sha256": "f942d7f67e2d94f7d05c4315c45256b27704329c2e30706b115fef0cd33aa523"
+    },
+    {
+      "path": "src/Pincho_bajo.png",
+      "bytes": 3545,
+      "sha256": "b1a3ed31b25bc34752a08d22da221dd78174d58be50fa0ea2efd89641c176e02"
+    },
+    {
+      "path": "src/boss_cosmico.png",
+      "bytes": 440334,
+      "sha256": "ba6d341ac3cc00fd6a50a9c15d1c330a58c5fe6af3f5b88bca131358d63a001f"
+    },
+    {
+      "path": "src/fondo.jpg",
+      "bytes": 17899,
+      "sha256": "dea826f260860e0bf1028adf8bf4b71a0f4af82a3f636867fee8ff1fd1e60303"
+    },
+    {
+      "path": "src/loading-cover.webp",
+      "bytes": 1522878,
+      "sha256": "a0413ace543a717a86b366ac83aa5683e683052d498dcbb6c7ba179081b962b3"
+    },
+    {
+      "path": "src/musica/logro-dificil.mp3",
+      "bytes": 94458,
+      "sha256": "f43a92d3a74ae72c3e3d1de15b8d840c998c786e9bbdf77bc658786379d041f5"
+    },
+    {
+      "path": "src/musica/logro.mp3",
+      "bytes": 67584,
+      "sha256": "5d8bd0fbc6536cf4aba29add3f819c5016c75104b994da3311f3eb0f40e9b349"
+    },
+    {
+      "path": "src/musica/musica_fondo_2.mp3",
+      "bytes": 3091625,
+      "sha256": "9758c563f54b70faac3e9ed6fbe3bdb779206ac7765f173372434a96dcd98179"
+    },
+    {
+      "path": "src/musica/sonido_invencibilidad.mp3",
+      "bytes": 139133,
+      "sha256": "50fc1d656883653716aea4f9a784435ac87ec2bbb76b290bb40dac257ff10ffd"
+    },
+    {
+      "path": "src/musica/sonido_muerte.mp3",
+      "bytes": 26698,
+      "sha256": "eeaa8f62c0217567c41a2a6079bee5b2222dae574a550fabcd44e9b5270502ef"
+    },
+    {
+      "path": "src/musica/sonido_puntaje.mp3",
+      "bytes": 8430,
+      "sha256": "b67890ad2fe01c86f8663c24ea3f945e06208aa8ae9e5a8bfd1ff5a1029fa589"
+    },
+    {
+      "path": "src/planetas/Jupiter.png",
+      "bytes": 3174,
+      "sha256": "aa0081ca3c948660f5d2bbfef7451777b255035d11dbdf61e350c4cfed35521d"
+    },
+    {
+      "path": "src/planetas/Marte.png",
+      "bytes": 2103,
+      "sha256": "6b921738572a483745f5a81239d3dbf3fe599a982fe25de1aafdacd1ee750bc6"
+    },
+    {
+      "path": "src/planetas/Mercurio.png",
+      "bytes": 1891,
+      "sha256": "43d37614e8336da2d33cd17de6b0f6a18649be9afff2bb799234d9bd0934c967"
+    },
+    {
+      "path": "src/planetas/Neptuno.png",
+      "bytes": 2117,
+      "sha256": "47d0effe54018caf143b1ce58f9597e0421e9d29927c7e38c0784915480e26b4"
+    },
+    {
+      "path": "src/planetas/Pluton.png",
+      "bytes": 5894,
+      "sha256": "24006d0ee42862e7c5efae7b0e72e8ada00c2663de78bc35853357e9bf1610b2"
+    },
+    {
+      "path": "src/planetas/Saturno.png",
+      "bytes": 4580,
+      "sha256": "a106e901cfd7856d19b139240fb36957bff0e75311d7a2b681d10fe55db51835"
+    },
+    {
+      "path": "src/planetas/Tierra.png",
+      "bytes": 2192,
+      "sha256": "3cf99708c23160e30abd16b713d233d83629255c1164a52c23ee657aaf7cad93"
+    },
+    {
+      "path": "src/planetas/Urano.png",
+      "bytes": 2717,
+      "sha256": "965848694397694bf765a1a6ff9316fc28e1e528491102bfe323b52e9d7e9353"
+    },
+    {
+      "path": "src/planetas/Venus.png",
+      "bytes": 3285,
+      "sha256": "9a2950fa8a49d58c9587d647bd06322ec63fba2be40be9c3b0919fcc417b95c3"
+    },
+    {
+      "path": "src/powerup_star.png",
+      "bytes": 336,
+      "sha256": "6fc6475f732665206779631e2cc0f0693664872d7178d05c6e969b3b2f8c596b"
+    },
+    {
+      "path": "src/slkscr.ttf",
+      "bytes": 7636,
+      "sha256": "ad9c058c9d7478fef40a2f457f3e47607c3ea7c7b2fda90ecd29097343d55432"
+    },
+    {
+      "path": "src/ufo_amarillo.png",
+      "bytes": 488,
+      "sha256": "3495e79509f878a8e0eca6c1691f771e552a52326ca84fa7907d257eee2bdb3f"
+    },
+    {
+      "path": "src/ufo_amarillo_muerto.png",
+      "bytes": 547,
+      "sha256": "8ac679900cb12ecaa81dc4255bc8b7608449ae8aeebe5401153006f374ffdd80"
+    },
+    {
+      "path": "src/ufo_argentina.png",
+      "bytes": 570,
+      "sha256": "e101f5f8e9fa958834093be735667488da3967ab93e24e231da08cade08d2960"
+    },
+    {
+      "path": "src/ufo_argentina_muert.png",
+      "bytes": 680,
+      "sha256": "34b459615546e32d0b370de81771e3b8ced2f7e4e8d863cd78b3945eed4bb492"
+    },
+    {
+      "path": "src/ufo_azul.png",
+      "bytes": 482,
+      "sha256": "4bc70f82adf310917dbc5922e91626dcc4a44213f1321101adbf185f7b4b63dc"
+    },
+    {
+      "path": "src/ufo_azul_muerto.png",
+      "bytes": 571,
+      "sha256": "83a912f949183d57812fe7db134e6b97f80f8c1ea6ea8effcb54a7289b52e326"
+    },
+    {
+      "path": "src/ufo_principal.png",
+      "bytes": 489,
+      "sha256": "ca68550b57797103924f9c8d8e323712948ba5cfc00a34e039502858687ad0cf"
+    },
+    {
+      "path": "src/ufo_rojo.png",
+      "bytes": 485,
+      "sha256": "74fe960d21f62b3f131289f44823c56d6128730c3b83502610a91f16773b5547"
+    },
+    {
+      "path": "src/ufo_rojo_muerto.png",
+      "bytes": 567,
+      "sha256": "afd15b67c87950149f333f2e632ae52d8d9719278d82506363d311dcf4708f3c"
+    },
+    {
+      "path": "src/ufo_venezuela.png",
+      "bytes": 567,
+      "sha256": "e102313881baef2ddf5562d8c22ad346fec2748258d214bd73354895ebb816bf"
+    },
+    {
+      "path": "src/ufo_venezuela_muerto.png",
+      "bytes": 671,
+      "sha256": "fafc5b997b729126d322025ef890a7fa1003e08fff0afce63e249493c5024149"
+    },
+    {
+      "path": "src/ufo_verde_muerto.png",
+      "bytes": 577,
+      "sha256": "2d455f9e31891b406d5d4be19fa7e791dfc418aba5821b273259a0668254f515"
+    }
+  ]
+}

@@ -10,26 +10,32 @@
 
   const canvas = document.getElementById("game");
   const context = canvas.getContext("2d");
+  const Flight = window.UfoFlightRules;
+  if (!Flight || !window.ufoRunCrazy || !window.UFO_CRAZY_CONFIG) {
+    window.ufoLoading.fail("A game file could not load. Check your connection and try again.");
+    return;
+  }
+  const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   let WIDTH = 800;
   let HEIGHT = 600;
-  const FPS = 80;
+  const FPS = Flight.FPS;
   const FIXED_STEP_MS = 1000 / FPS;
 
   const BLUE = "rgb(50, 120, 240)";
 
   let UFO_X = 150;
-  const UFO_WIDTH = 55;
-  const UFO_HEIGHT = 38;
-  const GRAVITY = 0.25;
-  const JUMP_IMPULSE = -6;
+  const UFO_WIDTH = 64;
+  const UFO_HEIGHT = 44;
+  const GRAVITY = 0.23;
+  const JUMP_IMPULSE = -5.9;
+  const MAX_FALL_SPEED = 7.6;
 
   const SPIKE_WIDTH = 100;
   const SPIKE_SOURCE_HEIGHT = 200;
   let SPIKE_HEIGHT = 600;
-  const INITIAL_SPIKE_FREQUENCY = 90;
-  const INITIAL_SPIKE_SPEED = 3;
-  const MOBILE_SPIKE_INTERVAL_MULTIPLIER = 1.65;
+  const INITIAL_SPIKE_FREQUENCY = Flight.pacing("normal", 0).intervalFrames;
+  const INITIAL_SPIKE_SPEED = Flight.pacing("normal", 0).speed;
   const mobileLayoutQuery = window.matchMedia(
     "(pointer: coarse), (max-width: 700px), (orientation: landscape) and (max-height: 550px)",
   );
@@ -41,7 +47,8 @@
   const INVINCIBILITY_FALLBACK_SECONDS = 5;
   const PLANET_SIZE = 80;
   const PLANET_OBSTACLE_INTERVAL = 3;
-  const STAR_OBSTACLE_INTERVAL = 18;
+  const STAR_OBSTACLE_INTERVAL = 12;
+  const FIRST_STAR_AT = 5;
   const ASTEROID_SIZE = 64;
   const ASTEROID_OBSTACLE_INTERVAL = 10;
   const ASTEROID_IMAGE_NAMES = ["asteroid", "asteroid2"];
@@ -56,28 +63,7 @@
   const BOSS_DEFEAT_ANIMATION_FRAMES = Math.round(FPS * 1.8);
   const BOSS_SCORE_REWARD = 10;
   const BOSS_COIN_REWARD = 50;
-  const DIFFICULTIES = {
-    easy: { name: "Easy", description: "No asteroids, with a gentler pace",
-      initialSpeed: 2.35, initialFrequency: 110, progressionEvery: 6,
-      speedIncrement: 0.25, frequencyDecrease: 3, asteroidInterval: 0,
-      mobilePortraitSpeedMultiplier: 1.12, mobilePortraitIntervalMultiplier: 1.75,
-      bossTriggerScore: 50, bossDurationSeconds: 20,
-      bossProjectileInterval: 120, bossProjectileSpeed: 3.4 },
-    normal: { name: "Normal", description: "The original UFO RUN experience",
-      initialSpeed: INITIAL_SPIKE_SPEED, initialFrequency: INITIAL_SPIKE_FREQUENCY,
-      progressionEvery: 4, speedIncrement: 0.5, frequencyDecrease: 5,
-      asteroidInterval: 0,
-      mobilePortraitSpeedMultiplier: 1.25, mobilePortraitIntervalMultiplier: 1.55,
-      bossTriggerScore: 75, bossDurationSeconds: 30,
-      bossProjectileInterval: 90, bossProjectileSpeed: 4.2 },
-    hard: { name: "Hard", description: "Faster flight with deadly asteroids",
-      initialSpeed: INITIAL_SPIKE_SPEED, initialFrequency: INITIAL_SPIKE_FREQUENCY,
-      progressionEvery: 4, speedIncrement: 0.5, frequencyDecrease: 5,
-      asteroidInterval: ASTEROID_OBSTACLE_INTERVAL / 2,
-      mobilePortraitSpeedMultiplier: 1.45, mobilePortraitIntervalMultiplier: 1.3,
-      bossTriggerScore: 100, bossDurationSeconds: 40,
-      bossProjectileInterval: 65, bossProjectileSpeed: 5 },
-  };
+  const DIFFICULTIES = Flight.difficulties;
 
 
   const PROFILE_STORAGE_KEY = "ufoRunCrazyGamesProfileV1";
@@ -118,17 +104,11 @@
 
   const backgroundSources = ["src/fondo.jpg", "src/Fondo-2.png", "src/Fondo-3.png"];
 
-  const planetCropSources = [
-    { imageName: "planetMercury", x: 146, y: 54, width: 813, height: 1096 },
-    { imageName: "planetVenus", x: 210, y: 53, width: 749, height: 851 },
-    { imageName: "planetEarth", x: 132, y: 53, width: 1060, height: 1145 },
-    { imageName: "planetMars", x: 97, y: 212, width: 1111, height: 968 },
-    { imageName: "planetJupiter", x: 210, y: 54, width: 628, height: 916 },
-    { imageName: "planetSaturn", x: 198, y: 53, width: 815, height: 779 },
-    { imageName: "planetUranus", x: 146, y: 53, width: 1064, height: 1097 },
-    { imageName: "planetNeptune", x: 97, y: 53, width: 1111, height: 1127 },
-    { imageName: "planetPluto", x: 425, y: 383, width: 422, height: 380 },
-  ];
+  // Identical source crops are baked by tools/crazygames/prepare-assets.cjs.
+  // The browser only decodes the 80px sprites it actually renders.
+  const planetCropSources = ["planetMercury", "planetVenus", "planetEarth", "planetMars",
+    "planetJupiter", "planetSaturn", "planetUranus", "planetNeptune", "planetPluto"]
+    .map((imageName) => ({ imageName, x: 0, y: 0, width: 80, height: 80 }));
 
   const imageSources = {
     background: "src/fondo.jpg",
@@ -177,20 +157,20 @@
   let scoreAudioStartOffset = SCORE_AUDIO_FALLBACK_OFFSET_SECONDS;
 
   backgroundMusic.loop = true;
-  backgroundMusic.volume = 0.4;
-  deathSound.volume = 0.3;
-  scoreSound.volume = 0.3;
-  invincibilitySound.volume = 0.3;
-  achievementSound.volume = 0.42;
-  difficultAchievementSound.volume = 0.46;
+  backgroundMusic.volume = 0.22;
+  deathSound.volume = 0.27;
+  scoreSound.volume = 0.23;
+  invincibilitySound.volume = 0.28;
+  achievementSound.volume = 0.3;
+  difficultAchievementSound.volume = 0.32;
 
   let invincibilitySoundFrames = Math.round(INVINCIBILITY_FALLBACK_SECONDS * FPS);
-  let invincibilityDurationFrames = invincibilitySoundFrames * 2;
+  let invincibilityDurationFrames = invincibilitySoundFrames;
 
   function syncInvincibilityDuration() {
     if (Number.isFinite(invincibilitySound.duration) && invincibilitySound.duration > 0) {
-      invincibilitySoundFrames = Math.max(1, Math.round(invincibilitySound.duration * FPS));
-      invincibilityDurationFrames = invincibilitySoundFrames * 2;
+      invincibilitySoundFrames = Flight.shieldFrames(invincibilitySound.duration);
+      invincibilityDurationFrames = invincibilitySoundFrames;
     }
     return invincibilityDurationFrames;
   }
@@ -298,6 +278,7 @@
       ownedSkins: ["classic"],
       selectedSkin: "classic",
       soundEnabled: true,
+      onboardingDone: false,
       coinAdDay: localDayKey(),
       coinAdsToday: 0,
       difficulty: "normal",
@@ -324,6 +305,7 @@
         ownedSkins,
         selectedSkin,
         soundEnabled: stored.soundEnabled !== false,
+        onboardingDone: stored.onboardingDone === true,
         coinAdDay: typeof stored.coinAdDay === "string" ? stored.coinAdDay : localDayKey(),
         coinAdsToday: Math.max(0, Math.min(DAILY_COIN_AD_LIMIT,
           Math.trunc(Number(stored.coinAdsToday) || 0))),
@@ -372,7 +354,6 @@
   let passedObstacles = 0;
   let invincible = false;
   let invincibleTime = 0;
-  let invincibilitySoundReplayed = false;
   let runUsedInvincibility = false;
   let powerupActive = false;
   let powerupX = WIDTH;
@@ -384,8 +365,10 @@
   let planetY = HEIGHT / 2;
   let planetVelocityY = 0;
   let currentPlanet = null;
+  let planetGate = null;
+  let starGate = null;
   let powerupVelocityY = 0;
-  let nextStarAt = STAR_OBSTACLE_INTERVAL;
+  let nextStarAt = FIRST_STAR_AT;
   let starPending = false;
   let nextAsteroidAt = ASTEROID_OBSTACLE_INTERVAL / 2;
   let nextAsteroidImageIndex = 0;
@@ -408,6 +391,22 @@
   let flightStarted = false;
   let bossWarningActive = false;
   let bossWarningFrames = 0;
+  let runFrames = 0;
+  let runPlanets = 0;
+  let runPreviousBest = 0;
+  let celebratedBest = false;
+  let deathReason = "spikes";
+  let gatesCreated = 0;
+  let previousGapCenter = HEIGHT / 2;
+  let gatePattern = "level";
+  let planetBag = [];
+  let tutorialVisible = false;
+  let launchAssistFrames = 0;
+  let manualBoostReceived = false;
+  let needsRender = true;
+  let lastProgressLabel = "";
+  const particles = Array.from({ length: 80 }, () => ({ life: 0 }));
+  let nextParticle = 0;
   const spriteCache = new Map();
   const asteroidCropCache = new Map();
 
@@ -514,6 +513,8 @@
 
   function showNextAchievement() {
     if (achievementToastTimer || !achievementQueue.length) return;
+    // Let the first control lesson breathe before showing earned rewards.
+    if (state === "playing" && runFrames < FPS * 4) return;
     const achievement = achievementQueue.shift();
     const toast = document.getElementById("achievement-toast");
     document.getElementById("achievement-toast-title").textContent = achievement.title;
@@ -602,7 +603,8 @@
     document.getElementById("loading-screen").hidden = state !== "loading";
     introElement.hidden = state !== "intro";
     document.querySelector(".wallet").hidden = state === "playing";
-    document.getElementById("authors-footer").hidden = state !== "gameover";
+    // Credits remain in Flight guide, away from the quick retry action.
+    document.getElementById("authors-footer").hidden = true;
     document.getElementById("invincible-label").hidden = state !== "playing" || !invincible;
     document.getElementById("boss-hud").hidden = state !== "playing" || !bossActive;
     document.getElementById("flight-start-prompt").hidden = state !== "playing" || flightStarted || gamePaused;
@@ -614,6 +616,7 @@
     if (interfaceState !== state) {
       interfaceElement.scrollTop = 0;
       interfaceState = state;
+      needsRender = true;
     }
     document.querySelectorAll("[data-credits]").forEach((element) => {
       element.textContent = formatPoints(profile.credits);
@@ -631,12 +634,18 @@
     soundButton.setAttribute("aria-pressed", String(!profile.soundEnabled));
     soundButton.disabled = window.ufoRunCrazy.isMuted();
     soundButton.setAttribute("aria-label", window.ufoRunCrazy.isMuted() ? "Sound disabled by platform" : profile.soundEnabled ? "Mute sound" : "Enable sound");
-    const fullscreenButton = document.getElementById("fullscreen-button");
-    fullscreenButton.hidden = !fullscreenRequestAvailable();
-    fullscreenButton.setAttribute("aria-label", fullscreenActive() ? "Exit fullscreen" : "Enter fullscreen");
     document.getElementById("pause-button").hidden = state !== "playing";
     document.getElementById("final-score").textContent = formatPoints(score);
     document.getElementById("run-reward").textContent = `+${lastReward} coins saved`;
+    document.getElementById("run-outcome").textContent = score > runPreviousBest ? "NEW PERSONAL BEST" : "MISSION OVER";
+    document.getElementById("result-title").textContent = score > runPreviousBest ? "You went further." : "One more flight?";
+    document.getElementById("death-hint").textContent = Flight.deathHints[deathReason] || Flight.deathHints.spikes;
+    document.getElementById("run-stats").textContent = `${passedObstacles} gates · ${runPlanets} planets · ${Math.floor(runFrames / FPS)}s`;
+    document.getElementById("flight-tutorial").hidden = state !== "playing" || gamePaused || !tutorialVisible;
+    document.getElementById("flight-progress").hidden = state !== "playing" || bossActive || bossWarningActive || bossDefeatAnimating;
+    const nextGoal = Flight.nextTarget(profile.bestScores[profile.difficulty], profile.bestScores[profile.difficulty],
+      DIFFICULTIES[profile.difficulty].bossTriggerScore, false);
+    document.getElementById("menu-goal").textContent = `Next target: ${nextGoal.label}`;
     document.getElementById("shop-status").textContent = shopMessage && performance.now() < shopMessageUntil
       ? shopMessage : "Earn coins by flying past obstacles";
     const coinAdsRemaining = Math.max(0, DAILY_COIN_AD_LIMIT - profile.coinAdsToday);
@@ -736,9 +745,12 @@
       spriteCache.delete("spikeBottom");
     }
     const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.round(bounds.width * pixelRatio);
-    canvas.height = Math.round(bounds.height * pixelRatio);
+    const nextWidth = Math.round(bounds.width * pixelRatio);
+    const nextHeight = Math.round(bounds.height * pixelRatio);
+    if (canvas.width !== nextWidth) canvas.width = nextWidth;
+    if (canvas.height !== nextHeight) canvas.height = nextHeight;
     context.setTransform(canvas.width / WIDTH, 0, 0, canvas.height / HEIGHT, 0, 0);
+    needsRender = true;
   }
 
   function loadImage(source) {
@@ -752,8 +764,10 @@
 
   async function loadAssets() {
     const entries = Object.entries(imageSources);
-    window.ufoLoading.plan([...entries.map(([name]) => name), "cover", "brand", "audio", "font", "sprites", "platform"]);
-    const platformReady = window.ufoRunCrazy.initialize().then(() => window.ufoLoading.complete("platform", "Preparing flight systems..."));
+    window.ufoLoading.plan([...entries.map(([name]) => name), "cover", "brand", "audio", "font", "sprites"]);
+    // The portal handshake runs in parallel; an unavailable SDK must not hold
+    // an otherwise ready game on the loading screen for its network timeout.
+    void window.ufoRunCrazy.initialize();
     const coverReady = loadImage("src/loading-cover.webp").then(() => window.ufoLoading.complete("cover"));
     const brandReady = loadImage("src/Logo_bz.png").then(() => window.ufoLoading.complete("brand"));
     const spritesReady = Promise.all(entries.map(async ([name, source]) => {
@@ -773,13 +787,20 @@
       for (const name of ASTEROID_IMAGE_NAMES) {
         getSprite(name);
       }
+      getSprite("spikeTop");
+      getSprite("spikeBottom");
+      for (const planet of planetSprites) {
+        currentPlanet = planet;
+        getPlanetSprite();
+      }
+      currentPlanet = null;
       window.ufoLoading.complete("sprites", "Preparing your ship...");
     });
     await Promise.all([
       spritesReady,
       prepareScoreAudio().then(() => window.ufoLoading.complete("audio", "Preparing flight audio...")),
       document.fonts.load('74px "UFO Run"').then(() => window.ufoLoading.complete("font")),
-      platformReady, coverReady, brandReady,
+      coverReady, brandReady,
     ]);
     applyBackground();
     window.ufoLoading.finish();
@@ -876,6 +897,7 @@
       gain.gain.value = scoreSound.volume;
       source.connect(gain);
       gain.connect(scoreAudioContext.destination);
+      source.onended = () => { source.disconnect(); gain.disconnect(); };
       source.start(0, Math.min(scoreAudioStartOffset, scoreAudioBuffer.duration / 4));
       return;
     }
@@ -937,8 +959,7 @@
     pauseOwner = owner;
     accumulator = 0;
     if (mute) {
-      stopAudio(backgroundMusic);
-      stopAudio(invincibilitySound);
+      silenceGameAudio();
     }
     syncInterface();
   }
@@ -1062,20 +1083,23 @@
 
     ufoY = HEIGHT / 2;
     jumpVelocity = 0;
-    flightStarted = false;
+    flightStarted = true;
     spikeCounter = 0;
     currentDifficulty = profile.difficulty;
     const difficulty = DIFFICULTIES[currentDifficulty];
-    spikeFrequency = difficulty.initialFrequency;
-    spikeSpeed = difficulty.initialSpeed;
+    const pace = Flight.pacing(currentDifficulty, 0);
+    spikeFrequency = pace.intervalFrames;
+    spikeSpeed = pace.speed;
     currentRunId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    spikes = [];
+    gatesCreated = 0;
+    previousGapCenter = HEIGHT / 2;
+    gatePattern = "level";
+    spikes = [createSpikes(WIDTH * 0.82)];
     score = 0;
     creditedScore = 0;
     passedObstacles = 0;
     invincible = false;
     invincibleTime = 0;
-    invincibilitySoundReplayed = false;
     runUsedInvincibility = false;
     powerupActive = false;
     powerupX = WIDTH;
@@ -1087,8 +1111,10 @@
     planetY = HEIGHT / 2;
     planetVelocityY = 0;
     currentPlanet = null;
+    planetGate = null;
+    starGate = null;
     powerupVelocityY = 0;
-    nextStarAt = STAR_OBSTACLE_INTERVAL;
+    nextStarAt = FIRST_STAR_AT;
     starPending = false;
     nextAsteroidAt = difficulty.asteroidInterval ? difficulty.asteroidInterval / 2 : Number.POSITIVE_INFINITY;
     nextAsteroidImageIndex = 0;
@@ -1109,6 +1135,17 @@
     bossDefeatAnimating = false;
     bossDefeatFrames = 0;
     feedback = [];
+    particles.forEach((particle) => { particle.life = 0; });
+    runFrames = 0;
+    runPlanets = 0;
+    runPreviousBest = profile.bestScores[currentDifficulty];
+    celebratedBest = false;
+    deathReason = "spikes";
+    tutorialVisible = !profile.onboardingDone;
+    launchAssistFrames = tutorialVisible ? Math.round(FPS * 1.4) : 0;
+    manualBoostReceived = false;
+    jumpVelocity = launchAssistFrames ? 0 : JUMP_IMPULSE;
+    lastProgressLabel = "";
     lastReward = 0;
     continueUsed = false;
     runRewardOfferShown = false;
@@ -1199,33 +1236,6 @@
     }
   }
 
-  function fullscreenRequestAvailable() {
-    return Boolean(document.documentElement.requestFullscreen && document.fullscreenEnabled !== false ||
-      document.documentElement.webkitRequestFullscreen && document.webkitFullscreenEnabled !== false);
-  }
-
-  function fullscreenActive() {
-    return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
-  }
-
-  async function toggleFullscreen() {
-    try {
-      if (fullscreenActive()) {
-        const exit = document.exitFullscreen || document.webkitExitFullscreen;
-        if (exit) await exit.call(document);
-      } else {
-        const request = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
-        if (!request) return false;
-        await request.call(document.documentElement);
-      }
-      return true;
-    } catch (_error) {
-      return false;
-    } finally {
-      syncInterface();
-    }
-  }
-
   function handleSkinAction(skin) {
     if (adRequestPending || transitionPending || window.ufoRunCrazy.isAdPending()) return;
     if (profile.selectedSkin === skin.id) {
@@ -1301,7 +1311,6 @@
     bossProjectiles = [];
     invincible = true;
     invincibleTime = 0;
-    invincibilitySoundReplayed = false;
     runUsedInvincibility = true;
     syncInvincibilityDuration();
     state = "playing";
@@ -1343,18 +1352,27 @@
         syncInterface();
       }
       jumpVelocity = JUMP_IMPULSE;
+      manualBoostReceived = true;
+      launchAssistFrames = 0;
+      emitParticles(UFO_X + 5, ufoY + UFO_HEIGHT * 0.65, "#50dcff", 5);
     }
   }
 
   function createSpikes(x) {
-    const spread = Math.min(150, HEIGHT * 0.18);
-    const gapCenter = randomBetween(HEIGHT / 2 - spread, HEIGHT / 2 + spread);
-    const gap = 180;
+    if (gatesCreated > 0 && gatesCreated % 5 === 0) {
+      const choices = Flight.patterns.filter((pattern) => pattern !== gatePattern);
+      gatePattern = choices[Math.floor(Math.random() * choices.length)];
+    }
+    const plan = Flight.gatePlan({ difficulty: currentDifficulty, index: gatesCreated,
+      previousCenter: previousGapCenter, height: HEIGHT, pattern: gatePattern });
+    previousGapCenter = plan.center;
+    gatesCreated += 1;
     return {
       topX: x,
-      topY: gapCenter - gap / 2 - SPIKE_HEIGHT,
+      topY: plan.top - SPIKE_HEIGHT,
       bottomX: x,
-      bottomY: gapCenter + gap / 2,
+      bottomY: plan.bottom,
+      pattern: gatePattern,
       counted: false,
     };
   }
@@ -1419,9 +1437,13 @@
       planetPending = true;
       return;
     }
-    currentPlanet = planetSprites[Math.floor(Math.random() * planetSprites.length)];
-    planetX = spawnFromRight(PLANET_SIZE);
-    planetY = collectibleY(PLANET_SIZE, planetX);
+    const gate = collectibleGate();
+    if (!gate) { planetPending = true; return; }
+    if (!planetBag.length) planetBag = Flight.shuffledBag(planetSprites.length);
+    currentPlanet = planetSprites[planetBag.pop()];
+    planetGate = gate;
+    planetX = gate.topX + (SPIKE_WIDTH - PLANET_SIZE) / 2;
+    planetY = safeGapY(gate, PLANET_SIZE);
     planetVelocityY = 0;
     planetActive = true;
     planetPending = false;
@@ -1433,11 +1455,20 @@
       starPending = true;
       return;
     }
-    powerupX = spawnFromRight(POWERUP_SIZE);
-    powerupY = mobileLayoutQuery.matches ? randomScreenY(POWERUP_SIZE) : collectibleY(POWERUP_SIZE);
+    const gate = collectibleGate();
+    if (!gate) { starPending = true; return; }
+    starGate = gate;
+    powerupX = gate.topX + (SPIKE_WIDTH - POWERUP_SIZE) / 2;
+    powerupY = safeGapY(gate, POWERUP_SIZE);
     powerupVelocityY = (Math.random() < 0.5 ? -1 : 1) * randomBetween(0.6, 1);
     powerupActive = true;
     starPending = false;
+  }
+
+  function collectibleGate() {
+    // Attach rewards to an opening while it is still outside the viewport.
+    // They then share its velocity and never jump vertically to dodge a wall.
+    return spikes.find((gate) => gate.topX >= WIDTH + 24) || null;
   }
 
   function activateAsteroid() {
@@ -1461,6 +1492,7 @@
       size,
       counted: false,
     });
+    addFeedback("INCOMING", WIDTH - 90, (lane.minY + lane.maxY + size) / 2, "#d5b5ff", 55);
     asteroidPending = false;
   }
 
@@ -1509,7 +1541,36 @@
   }
 
   function addFeedback(text, x, y, color, duration = 80) {
+    if (feedback.length >= 8) feedback.shift();
     feedback.push({ text, x, y, color, age: 0, duration });
+  }
+
+  function emitParticles(x, y, color, count = 10) {
+    if (reducedMotionQuery.matches) return;
+    for (let index = 0; index < count; index++) {
+      const particle = particles[nextParticle];
+      nextParticle = (nextParticle + 1) % particles.length;
+      Object.assign(particle, { x, y, color, vx: randomBetween(-2.8, 1.6),
+        vy: randomBetween(-1.8, 1.8), life: randomBetween(16, 34), size: Math.random() < 0.6 ? 3 : 5 });
+    }
+  }
+
+  function updateParticles(step = 1) {
+    for (const particle of particles) {
+      if (particle.life <= 0) continue;
+      particle.life -= step;
+      particle.x += particle.vx * step;
+      particle.y += particle.vy * step;
+      particle.vx *= 0.97 ** step;
+    }
+  }
+
+  function dismissTutorial() {
+    tutorialVisible = false;
+    profile.onboardingDone = true;
+    saveProfile();
+    syncInterface();
+    canvas.focus({ preventScroll: true });
   }
 
   function rasterSprite(surface) {
@@ -1550,6 +1611,9 @@
       const targetSize = ASTEROID_SIZE;
       const source = images[sourceName];
       let crop = asteroidCropCache.get(sourceName);
+      if (source.width === targetSize && source.height === targetSize) {
+        crop = { left: 0, top: 0, width: targetSize, height: targetSize };
+      }
       if (!crop) {
         const scan = spriteSurface(source.width, source.height);
         scan.getContext("2d").drawImage(source, 0, 0);
@@ -1646,6 +1710,7 @@
 
   function finishFrameAsGameOver() {
     if (state !== "playing") return;
+    emitParticles(UFO_X + UFO_WIDTH / 2, ufoY + UFO_HEIGHT / 2, "#ff8a89", 24);
     lastReward = Math.max(0, score - creditedScore);
     profile.credits += lastReward;
     creditedScore += lastReward;
@@ -1654,12 +1719,14 @@
     recordRankingScore();
     saveProfile();
     state = "gameover";
+    tutorialVisible = false;
     continueAdMessage = continueUsed
       ? "Second chance already used" : "One second chance per run";
     syncInterface();
     accumulator = 0;
     stopAudio(backgroundMusic);
     stopAudio(invincibilitySound, true);
+    showNextAchievement();
   }
 
   function endInvincibility(rewindSound = true, force = false) {
@@ -1667,7 +1734,6 @@
     clampUfoToBounds(getUfoSprite());
     invincible = false;
     invincibleTime = 0;
-    invincibilitySoundReplayed = false;
     if (rewindSound) stopAudio(invincibilitySound, true);
   }
 
@@ -1835,7 +1901,7 @@
       projectile.y += projectile.velocityY;
       if (!invincible && rectanglesOverlap(ufoRect, {
         x: projectile.x, y: projectile.y, width: projectile.size, height: projectile.size,
-      })) hit = true;
+      })) { hit = true; deathReason = "boss"; }
     }
     bossProjectiles = bossProjectiles.filter((projectile) => projectile.x + projectile.size >= -20 &&
       projectile.x <= WIDTH + 20 && projectile.y + projectile.size >= -20 && projectile.y <= HEIGHT + 20);
@@ -1848,10 +1914,6 @@
     const protectedThisFrame = invincible;
     if (invincible) {
       invincibleTime += 1;
-      if (!invincibilitySoundReplayed && invincibleTime >= invincibilitySoundFrames) {
-        invincibilitySoundReplayed = true;
-        playAudio(invincibilitySound, true);
-      }
       if (invincibleTime >= invincibilityDurationFrames) {
         endInvincibility();
         // No modificar la posición de ninguna estrella al terminar el efecto.
@@ -1859,6 +1921,9 @@
     }
     feedback.forEach((item) => { item.age += 1; });
     feedback = feedback.filter((item) => item.age < item.duration);
+    updateParticles();
+    if (runFrames % 6 === 0) emitParticles(UFO_X + 3, ufoY + UFO_HEIGHT * 0.65, "#50dcff", 1);
+    if (achievementQueue.length && !achievementToastTimer) showNextAchievement();
 
     if (diedThisFrame && !protectedThisFrame) {
       playEffect(deathSound);
@@ -1870,13 +1935,20 @@
     const difficulty = DIFFICULTIES[currentDifficulty];
     const portraitSpeedMultiplier = 1;
     if (!flightStarted) return;
+    runFrames += 1;
     if (specialSpawnCooldown > 0) specialSpawnCooldown -= 1;
-    jumpVelocity += GRAVITY;
-    ufoY += jumpVelocity;
+    if (launchAssistFrames > 0 && !manualBoostReceived) {
+      launchAssistFrames -= 1;
+      if (!launchAssistFrames) jumpVelocity = JUMP_IMPULSE;
+    } else {
+      jumpVelocity = Math.min(MAX_FALL_SPEED, jumpVelocity + GRAVITY);
+      ufoY += jumpVelocity;
+    }
     const ufoSprite = getUfoSprite();
     if (invincible) clampUfoToBounds(ufoSprite);
     const ufoRect = spriteRect(ufoSprite, UFO_X, ufoY);
     let diedThisFrame = !invincible && (ufoRect.y < 0 || ufoRect.y + ufoRect.height > HEIGHT);
+    if (diedThisFrame) deathReason = ufoRect.y < 0 ? "ceiling" : "floor";
 
     if (bossWarningActive) {
       diedThisFrame = updateBossWarning(ufoRect, portraitSpeedMultiplier) || diedThisFrame;
@@ -1897,9 +1969,7 @@
     }
 
     spikeCounter += 1;
-    const mobileIntervalMultiplier = MOBILE_SPIKE_INTERVAL_MULTIPLIER;
-    const spawnInterval = mobileLayoutQuery.matches
-      ? Math.ceil(spikeFrequency * mobileIntervalMultiplier) : spikeFrequency;
+    const spawnInterval = spikeFrequency;
     if (spikeCounter > spawnInterval) {
       spikes.push(createSpikes(spawnFromRight(SPIKE_WIDTH)));
       spikeCounter = 0;
@@ -1915,13 +1985,22 @@
         spike.counted = true;
         passedObstacles += 1;
         score += 1;
+        emitParticles(UFO_X + UFO_WIDTH, ufoY + UFO_HEIGHT / 2, "#83f5d1", 8);
+        if (!celebratedBest && runPreviousBest > 0 && score > runPreviousBest) {
+          celebratedBest = true;
+          addFeedback("NEW BEST", UFO_X + 100, ufoY - 35, "#ffd648", 100);
+          playUiSound();
+        } else if ([5, 10, 25, 50].includes(score)) {
+          addFeedback(`${score} POINTS`, WIDTH / 2, 115, "#50dcff", 85);
+        }
+        if (tutorialVisible && passedObstacles >= 2) dismissTutorial();
         playScoreSound();
         checkAchievements();
         checkBossTrigger();
-        if (!bossActive && !bossWarningActive && passedObstacles < 44 &&
-          passedObstacles % difficulty.progressionEvery === 0) {
-          spikeSpeed += difficulty.speedIncrement;
-          spikeFrequency = Math.max(48, spikeFrequency - difficulty.frequencyDecrease);
+        if (!bossActive && !bossWarningActive) {
+          const pace = Flight.pacing(currentDifficulty, passedObstacles);
+          spikeSpeed = pace.speed;
+          spikeFrequency = pace.intervalFrames;
         }
         if (!bossActive && !bossWarningActive && passedObstacles >= nextPlanetAt) {
           planetPending = true;
@@ -1950,21 +2029,21 @@
 
     if (powerupActive) {
       const star = { x: powerupX, y: powerupY, velocityY: powerupVelocityY };
-      const starSpeed = Math.max(POWERUP_SPEED, spikeSpeed) * portraitSpeedMultiplier;
+      const starSpeed = spikeSpeed * portraitSpeedMultiplier;
       moveHorizontalItem(star, starSpeed);
-      powerupX = star.x;
+      powerupX = starGate ? starGate.topX + (SPIKE_WIDTH - POWERUP_SIZE) / 2 : star.x;
       powerupY = star.y;
       powerupVelocityY = star.velocityY;
       if (opaqueOverlap(ufoRect, spriteRect(getSprite("powerup"), powerupX, powerupY))) {
         invincible = true;
         invincibleTime = 0;
-        invincibilitySoundReplayed = false;
         runUsedInvincibility = true;
         profile.achievementStats.starsCollected += 1;
         syncInvincibilityDuration();
         powerupActive = false;
         beginSpecialSpawnCooldown();
         addFeedback("INVINCIBLE", UFO_X + UFO_WIDTH / 2, ufoY - 42, "#ffd648");
+        emitParticles(powerupX, powerupY, "#ffd648", 20);
         playAudio(invincibilitySound, true);
         checkAchievements();
       } else if (powerupX + POWERUP_SIZE < 0) {
@@ -1974,16 +2053,18 @@
     }
 
     if (planetActive) {
-      planetX -= spikeSpeed * portraitSpeedMultiplier * WIDTH / 800;
-      planetY = keepCollectibleClearOfSpikes(planetX, planetY, PLANET_SIZE);
+      planetX = planetGate ? planetGate.topX + (SPIKE_WIDTH - PLANET_SIZE) / 2
+        : planetX - spikeSpeed * portraitSpeedMultiplier * WIDTH / 800;
       if (opaqueOverlap(ufoRect, spriteRect(getPlanetSprite(), planetX, planetY))) {
         score += 1;
+        runPlanets += 1;
         profile.achievementStats.planetsCollected += 1;
         if (!profile.achievementStats.planetIds.includes(currentPlanet.imageName)) {
           profile.achievementStats.planetIds.push(currentPlanet.imageName);
         }
         playScoreSound();
         addFeedback("+1", planetX + PLANET_SIZE / 2, planetY, "#50dcff");
+        emitParticles(planetX + PLANET_SIZE / 2, planetY + PLANET_SIZE / 2, "#50dcff", 16);
         planetActive = false;
         beginSpecialSpawnCooldown();
         checkBossTrigger();
@@ -2006,12 +2087,16 @@
       if (!invincible && opaqueOverlap(ufoRect,
         spriteRect(getSprite(asteroid.spriteName), asteroid.x, asteroid.y))) {
         diedThisFrame = true;
+        deathReason = "asteroid";
       }
     }
     asteroids = asteroids.filter((asteroid) => asteroid.x + asteroid.size >= 0);
     if (asteroidWasActive && asteroids.length === 0) beginSpecialSpawnCooldown();
     if (!diedThisFrame) trySpawnPendingSpecial();
-    if (!invincible && collidesWithSpikes(ufoRect)) diedThisFrame = true;
+    if (!invincible && collidesWithSpikes(ufoRect)) {
+      diedThisFrame = true;
+      deathReason = "spikes";
+    }
 
     finishGameplayUpdate(diedThisFrame);
   }
@@ -2061,6 +2146,17 @@
     }
     context.restore();
 
+    if (bossActive && bossProjectileCounter >= DIFFICULTIES[currentDifficulty].bossProjectileInterval - 22) {
+      // A visible charge cue precedes every volley; it is not a damaging projectile.
+      const mouthX = bossX + dimensions.width * 0.08;
+      const mouthY = bossY + dimensions.height * 0.55;
+      context.strokeStyle = "#ffd648";
+      context.lineWidth = 3;
+      context.beginPath();
+      context.arc(mouthX, mouthY, 15, 0, Math.PI * 2);
+      context.stroke();
+    }
+
     for (const projectile of bossProjectiles) {
       const x = Math.trunc(projectile.x), y = Math.trunc(projectile.y), size = projectile.size;
       context.save();
@@ -2078,24 +2174,24 @@
 
   function drawBossWarning() {
     if (!bossWarningActive) return;
-    const pulse = 0.16 + Math.abs(Math.sin(bossWarningFrames / 10)) * 0.16;
     const seconds = Math.max(1, Math.ceil((BOSS_WARNING_FRAMES - bossWarningFrames) / FPS));
     context.save();
-    context.fillStyle = `rgba(110,0,18,${pulse})`;
-    context.fillRect(0, 0, WIDTH, HEIGHT);
+    context.fillStyle = "rgba(23,7,30,.92)";
+    const boxWidth = Math.min(WIDTH * 0.65, 450);
+    context.fillRect((WIDTH - boxWidth) / 2, 72, boxWidth, 104);
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.shadowColor = "#000";
     context.shadowBlur = 8;
     context.fillStyle = "#ff5b69";
-    context.font = `bold ${Math.max(28, Math.min(54, WIDTH * 0.065))}px "UFO Run", monospace`;
-    context.fillText("WARNING", WIDTH / 2, HEIGHT * 0.37);
+    context.font = '26px "UFO Run", monospace';
+    context.fillText("BOSS INCOMING", WIDTH / 2, 103);
     context.fillStyle = "#eef7ff";
-    context.font = `${Math.max(14, Math.min(24, WIDTH * 0.027))}px "UFO Run", monospace`;
-    context.fillText("BOSS INCOMING", WIDTH / 2, HEIGHT * 0.47);
+    context.font = '14px "UFO Run", monospace';
+    context.fillText("Dodge the volleys. Survive to win.", WIDTH / 2, 130);
     context.fillStyle = "#ffd648";
-    context.font = `${Math.max(22, Math.min(38, WIDTH * 0.045))}px "UFO Run", monospace`;
-    context.fillText(String(seconds), WIDTH / 2, HEIGHT * 0.57);
+    context.font = '22px "UFO Run", monospace';
+    context.fillText(String(seconds), WIDTH / 2, 157);
     context.restore();
   }
 
@@ -2109,7 +2205,7 @@
   }
 
   function drawFeedback() {
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reducedMotion = reducedMotionQuery.matches;
     for (const item of feedback) {
       const progress = item.age / item.duration;
       context.save();
@@ -2146,7 +2242,19 @@
 
   function render() {
     if (state === "loading") return;
+    if (!["playing", "gameover"].includes(state)) {
+      context.clearRect(0, 0, WIDTH, HEIGHT);
+      needsRender = false;
+      return;
+    }
     drawWorld();
+    for (const particle of particles) {
+      if (particle.life <= 0) continue;
+      context.globalAlpha = Math.min(1, particle.life / 12);
+      context.fillStyle = particle.color;
+      context.fillRect(Math.round(particle.x), Math.round(particle.y), particle.size, particle.size);
+    }
+    context.globalAlpha = 1;
     if (state === "playing" || state === "gameover") {
       const sprite = getUfoSprite(state === "gameover");
       drawSprite(sprite, UFO_X, ufoY);
@@ -2170,6 +2278,13 @@
       const scoreLabel = "Score: " + formatPoints(score);
       document.getElementById("invincible-label").hidden = !invincible;
       if (gameHud.textContent !== scoreLabel) gameHud.textContent = scoreLabel;
+      const goal = Flight.nextTarget(score, runPreviousBest, DIFFICULTIES[currentDifficulty].bossTriggerScore, bossCompleted);
+      const progressLabel = `Next: ${goal.label} · ${score}/${goal.score}`;
+      if (progressLabel !== lastProgressLabel) {
+        document.getElementById("flight-target").textContent = progressLabel;
+        document.getElementById("flight-progress-fill").style.transform = `scaleX(${Math.min(1, score / goal.score)})`;
+        lastProgressLabel = progressLabel;
+      }
       if (bossActive) {
         const durationFrames = bossDurationFrames();
         const remainingRatio = Math.max(0, (durationFrames - bossTimeFrames) / durationFrames);
@@ -2194,7 +2309,9 @@
       accumulator = 0;
     }
 
-    render();
+    if (state === "gameover" && !document.hidden) updateParticles(elapsed / FIXED_STEP_MS);
+
+    if (state === "playing" || state === "gameover" || needsRender) render();
     animationFrameId = requestAnimationFrame(frame);
   }
 
@@ -2208,18 +2325,20 @@
   window.addEventListener("keydown", (event) => {
     if (portraitQuery.matches || window.ufoRunCrazy.isAdPending() || transitionPending || adRequestPending || document.hidden) return;
     if (event.target instanceof HTMLElement && event.target.closest("input, textarea, select, [contenteditable]")) return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
     // Native button activation stays accessible; gameplay keys never scroll the portal.
     if ((event.code === "Space" || event.code === "Enter") &&
       event.target instanceof HTMLElement && event.target.closest("button")) return;
     if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code)) event.preventDefault();
-    if (state === "intro" && (event.code === "Escape" || event.code === "Enter")) {
+    if (event.repeat) return;
+    if (state === "intro" && event.code === "Enter") {
       event.preventDefault();
       finishIntro();
-    } else if (state === "playing" && (event.code === "KeyP" || event.code === "Escape")) {
+    } else if (state === "playing" && event.code === "KeyP") {
       event.preventDefault();
       if (gamePaused && pauseOwner === "pause") resumeGame();
       else pauseGame();
-    } else if (state === "playing" && event.code === "Space" && !gamePaused) {
+    } else if (state === "playing" && ["Space", "ArrowUp", "KeyW"].includes(event.code) && !gamePaused) {
       event.preventDefault();
       jump();
     } else if (state === "menu" && (event.code === "Space" || event.code === "Enter")) {
@@ -2228,15 +2347,12 @@
     } else if (state === "menu" && event.code === "KeyT") {
       event.preventDefault();
       showShop();
-    } else if (["shop", "help", "ranking", "achievements"].includes(state) && event.code === "Escape") {
+    } else if (["shop", "help", "ranking", "achievements"].includes(state) && event.code === "Backspace") {
       event.preventDefault();
       showMainMenu();
-    } else if (state === "gameover" && (event.code === "KeyR" || event.code === "Enter")) {
+    } else if (state === "gameover" && ["KeyR", "Enter", "Space"].includes(event.code)) {
       event.preventDefault();
       void requestGameStart();
-    } else if (state === "gameover" && event.code === "Escape") {
-      event.preventDefault();
-      void requestMainMenu();
     }
   });
 
@@ -2255,9 +2371,10 @@
     "continue-ad-button": handleContinueAd,
     "continue-coins-button": handlePaidContinue,
     "sound-button": toggleSound,
-    "fullscreen-button": toggleFullscreen,
     "pause-button": pauseGame,
     "skip-intro-button": finishIntro,
+    "credits-button": startIntro,
+    "skip-tutorial-button": dismissTutorial,
     "resume-button": resumeGame,
     "pause-restart-button": requestGameStart,
     "pause-menu-button": requestMainMenu,
@@ -2280,7 +2397,6 @@
     event.preventDefault();
     resumeGame();
   });
-  document.getElementById("retry-loading-button").addEventListener("click", () => window.location.reload());
   window.addEventListener("ufo-crazy-ad-state", handleAdState);
   window.addEventListener("ufo-crazy-availability", syncInterface);
   window.addEventListener("ufo-crazy-audio", () => {
@@ -2304,8 +2420,12 @@
     previousTime = performance.now();
   });
   window.addEventListener("blur", () => {
+    pageAudioSuspended = true;
     if (state === "playing" && !gamePaused) pauseGame();
     silenceGameAudio();
+  });
+  window.addEventListener("focus", () => {
+    pageAudioSuspended = document.hidden;
   });
   syncOrientation();
   resizeGame();
@@ -2317,7 +2437,7 @@
 
   loadAssets()
     .then(() => {
-      startIntro();
+      showMainMenu();
       previousTime = performance.now();
       animationFrameId = requestAnimationFrame(frame);
     })

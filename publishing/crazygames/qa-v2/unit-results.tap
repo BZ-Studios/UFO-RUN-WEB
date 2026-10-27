@@ -1,0 +1,496 @@
+TAP version 13
+# Subtest: SDK sends one loading pair and deduplicates gameplay states
+ok 1 - SDK sends one loading pair and deduplicates gameplay states
+  ---
+  duration_ms: 10.9799
+  type: 'test'
+  ...
+# Subtest: Late SDK initialization replays already loaded and playing state in order
+ok 2 - Late SDK initialization replays already loaded and playing state in order
+  ---
+  duration_ms: 3.1397
+  type: 'test'
+  ...
+# Subtest: Basic Launch never requests ads or invents rewards
+ok 3 - Basic Launch never requests ads or invents rewards
+  ---
+  duration_ms: 6.1156
+  type: 'test'
+  ...
+# Subtest: Reward uses completion callback, rejects overlap and settles once despite duplicate callbacks
+ok 4 - Reward uses completion callback, rejects overlap and settles once despite duplicate callbacks
+  ---
+  duration_ms: 3.8075
+  type: 'test'
+  ...
+# Subtest: No fill and request timeout grant nothing; invalid placements are ignored
+ok 5 - No fill and request timeout grant nothing; invalid placements are ignored
+  ---
+  duration_ms: 4.0678
+  type: 'test'
+  ...
+# Subtest: Platform disabling Basic ads is respected and platform mute is propagated
+ok 6 - Platform disabling Basic ads is respected and platform mute is propagated
+  ---
+  duration_ms: 3.1317
+  type: 'test'
+  ...
+# Subtest: Unavailable SDK and disabled environments keep gameplay bridge usable
+ok 7 - Unavailable SDK and disabled environments keep gameplay bridge usable
+  ---
+  duration_ms: 5.3034
+  type: 'test'
+  ...
+# Subtest: Bounded, progressive pacing on all difficulties, identical for mouse and touch
+ok 8 - Bounded, progressive pacing on all difficulties, identical for mouse and touch
+  ---
+  duration_ms: 11.9459
+  type: 'test'
+  ...
+# Subtest: Thousands of varied openings remain on screen and within the maximum climb step
+ok 9 - Thousands of varied openings remain on screen and within the maximum climb step
+  ---
+  duration_ms: 20.5317
+  type: 'test'
+  ...
+# Subtest: A shuffled planet bag contains every world once before it repeats
+ok 10 - A shuffled planet bag contains every world once before it repeats
+  ---
+  duration_ms: 2.5667
+  type: 'test'
+  ...
+# Subtest: Milestones lead into the existing boss and continue after victory
+ok 11 - Milestones lead into the existing boss and continue after victory
+  ---
+  duration_ms: 0.6472
+  type: 'test'
+  ...
+# Subtest: One Play starts the world, with a skippable in-flight lesson instead of a second start action
+ok 12 - One Play starts the world, with a skippable in-flight lesson instead of a second start action
+  ---
+  duration_ms: 26.7056
+  type: 'test'
+  ...
+# Subtest: A shield lasts exactly one sound and is not replayed halfway through
+ok 13 - A shield lasts exactly one sound and is not replayed halfway through
+  ---
+  duration_ms: 18.6851
+  type: 'test'
+  ...
+# Subtest: Reward sprites start fully outside the right edge, stay anchored and never jump vertically
+ok 14 - Reward sprites start fully outside the right edge, stay anchored and never jump vertically
+  ---
+  duration_ms: 22.1819
+  type: 'test'
+  ...
+# Subtest: A planet and defeat can only pay their rewards once
+ok 15 - A planet and defeat can only pay their rewards once
+  ---
+  duration_ms: 20.1966
+  type: 'test'
+  ...
+# Subtest: Existing local progress, owned skins, selected ship and records survive the new version
+ok 16 - Existing local progress, owned skins, selected ship and records survive the new version
+  ---
+  duration_ms: 7.0502
+  type: 'test'
+  ...
+# Subtest: Transparent mask collision uses visible pixels, not empty rectangle corners
+ok 17 - Transparent mask collision uses visible pixels, not empty rectangle corners
+  ---
+  duration_ms: 5.003
+  type: 'test'
+  ...
+# Subtest: Fixed-step physics stays consistent at 30, 60, 120, 144 and 165 Hz
+ok 18 - Fixed-step physics stays consistent at 30, 60, 120, 144 and 165 Hz
+  ---
+  duration_ms: 220.8573
+  type: 'test'
+  ...
+# Subtest: Pause stops gameplay progression, particle allocation stays bounded
+ok 19 - Pause stops gameplay progression, particle allocation stays bounded
+  ---
+  duration_ms: 8.9337
+  type: 'test'
+  ...
+# Subtest: Timed boss completes once, clears projectiles and preserves rewards: easy
+ok 20 - Timed boss completes once, clears projectiles and preserves rewards: easy
+  ---
+  duration_ms: 12.0545
+  type: 'test'
+  ...
+# Subtest: Timed boss completes once, clears projectiles and preserves rewards: normal
+ok 21 - Timed boss completes once, clears projectiles and preserves rewards: normal
+  ---
+  duration_ms: 11.9818
+  type: 'test'
+  ...
+# Subtest: Timed boss completes once, clears projectiles and preserves rewards: hard
+ok 22 - Timed boss completes once, clears projectiles and preserves rewards: hard
+  ---
+  duration_ms: 12.8035
+  type: 'test'
+  ...
+# Subtest: Rutas de assets válidas y pinchos nuevos de 100x200
+ok 23 - Rutas de assets válidas y pinchos nuevos de 100x200
+  ---
+  duration_ms: 293.32
+  type: 'test'
+  ...
+# Subtest: Cada skin tiene variante muerta y las skins de países cuestan lo mismo
+ok 24 - Cada skin tiene variante muerta y las skins de países cuestan lo mismo
+  ---
+  duration_ms: 0.8918
+  type: 'test'
+  ...
+# Subtest: Los precios del Hangar están multiplicados por diez
+ok 25 - Los precios del Hangar están multiplicados por diez
+  ---
+  duration_ms: 0.7294
+  type: 'test'
+  ...
+# Subtest: La intro incluye marca B&Z y créditos en el orden solicitado
+ok 26 - La intro incluye marca B&Z y créditos en el orden solicitado
+  ---
+  duration_ms: 0.5875
+  type: 'test'
+  ...
+# Subtest: Las zonas transparentes no colisionan; los píxeles opacos sí
+ok 27 - Las zonas transparentes no colisionan; los píxeles opacos sí
+  ---
+  duration_ms: 16.7146
+  type: 'test'
+  ...
+# Subtest: Los planetas aparecen antes y varían su altura
+ok 28 - Los planetas aparecen antes y varían su altura
+  ---
+  duration_ms: 8.0189
+  type: 'test'
+  ...
+# Subtest: Los planetas se mantienen dentro del hueco y no pisan los pinchos
+ok 29 - Los planetas se mantienen dentro del hueco y no pisan los pinchos
+  ---
+  duration_ms: 6.9127
+  type: 'test'
+  ...
+# Subtest: Estrella cada 18 obstáculos y asteroides exclusivos de Difícil
+ok 30 - Estrella cada 18 obstáculos y asteroides exclusivos de Difícil
+  ---
+  duration_ms: 19.4599
+  type: 'test'
+  ...
+# Subtest: Los dos asteroides se intercalan en cada aparición
+ok 31 - Los dos asteroides se intercalan en cada aparición
+  ---
+  duration_ms: 5.9232
+  type: 'test'
+  ...
+# Subtest: Planetas, estrellas y asteroides se ordenan sin aparecer juntos
+ok 32 - Planetas, estrellas y asteroides se ordenan sin aparecer juntos
+  ---
+  duration_ms: 10.5204
+  type: 'test'
+  ...
+# Subtest: Las tres dificultades aplican sus reglas de velocidad y asteroides
+ok 33 - Las tres dificultades aplican sus reglas de velocidad y asteroides
+  ---
+  duration_ms: 16.6911
+  type: 'test'
+  ...
+# Subtest: El sonido de puntuación usa inmediatamente el audio precargado
+ok 34 - El sonido de puntuación usa inmediatamente el audio precargado
+  ---
+  duration_ms: 5.4295
+  type: 'test'
+  ...
+# Subtest: El nombre se solicita una vez y queda confirmado en el perfil
+ok 35 - El nombre se solicita una vez y queda confirmado en el perfil
+  ---
+  duration_ms: 6.2926
+  type: 'test'
+  ...
+# Subtest: El nombre queda bloqueado y cambiarlo cuesta 100 monedas
+ok 36 - El nombre queda bloqueado y cambiarlo cuesta 100 monedas
+  ---
+  duration_ms: 6.1114
+  type: 'test'
+  ...
+# Subtest: La partida espera el primer impulso antes de activar la física
+ok 37 - La partida espera el primer impulso antes de activar la física
+  ---
+  duration_ms: 4.6068
+  type: 'test'
+  ...
+# Subtest: Recoger planeta suma +1 con animación y conserva monedas previas
+ok 38 - Recoger planeta suma +1 con animación y conserva monedas previas
+  ---
+  duration_ms: 7.745
+  type: 'test'
+  ...
+# Subtest: Estrella duplica la invencibilidad y reproduce el sonido dos veces
+ok 39 - Estrella duplica la invencibilidad y reproduce el sonido dos veces
+  ---
+  duration_ms: 9.5721
+  type: 'test'
+  ...
+# Subtest: En móvil planeta, estrella y asteroide nacen a la derecha y avanzan horizontalmente
+ok 40 - En móvil planeta, estrella y asteroide nacen a la derecha y avanzan horizontalmente
+  ---
+  duration_ms: 4.2381
+  type: 'test'
+  ...
+# Subtest: En móvil vertical hay más espacio entre pinchos y entre cada par
+ok 41 - En móvil vertical hay más espacio entre pinchos y entre cada par
+  ---
+  duration_ms: 10.7011
+  type: 'test'
+  ...
+# Subtest: Las tres dificultades son más rápidas en móvil vertical
+ok 42 - Las tres dificultades son más rápidas en móvil vertical
+  ---
+  duration_ms: 9.6342
+  type: 'test'
+  ...
+# Subtest: La ayuda, Hangar y ranking por dificultad están disponibles
+ok 43 - La ayuda, Hangar y ranking por dificultad están disponibles
+  ---
+  duration_ms: 0.251
+  type: 'test'
+  ...
+# Subtest: El jefe avisa durante 3 segundos antes de aparecer y suspende los pinchos
+ok 44 - El jefe avisa durante 3 segundos antes de aparecer y suspende los pinchos
+  ---
+  duration_ms: 5.6206
+  type: 'test'
+  ...
+# Subtest: Sobrevivir 30 segundos derrota al jefe y entrega la recompensa
+ok 45 - Sobrevivir 30 segundos derrota al jefe y entrega la recompensa
+  ---
+  duration_ms: 9.583
+  type: 'test'
+  ...
+# Subtest: Los proyectiles del jefe destruyen al UFO sin invencibilidad
+ok 46 - Los proyectiles del jefe destruyen al UFO sin invencibilidad
+  ---
+  duration_ms: 3.6187
+  type: 'test'
+  ...
+# Subtest: El ranking conserva el mejor resultado local de cada partida
+ok 47 - El ranking conserva el mejor resultado local de cada partida
+  ---
+  duration_ms: 3.6399
+  type: 'test'
+  ...
+# Subtest: El mejor puntaje local se guarda por separado en cada dificultad
+ok 48 - El mejor puntaje local se guarda por separado en cada dificultad
+  ---
+  duration_ms: 3.8973
+  type: 'test'
+  ...
+# Subtest: El panel F2 exige 9701 y ofrece herramientas de prueba
+ok 49 - El panel F2 exige 9701 y ofrece herramientas de prueba
+  ---
+  duration_ms: 4.3931
+  type: 'test'
+  ...
+# Subtest: La tienda entrega 50 monedas por anuncio y respeta el máximo diario de 10
+ok 50 - La tienda entrega 50 monedas por anuncio y respeta el máximo diario de 10
+  ---
+  duration_ms: 5.666
+  type: 'test'
+  ...
+# Subtest: Un anuncio no completado no concede monedas
+ok 51 - Un anuncio no completado no concede monedas
+  ---
+  duration_ms: 3.9345
+  type: 'test'
+  ...
+# Subtest: El anuncio permite continuar una vez y no duplica monedas ya guardadas
+ok 52 - El anuncio permite continuar una vez y no duplica monedas ya guardadas
+  ---
+  duration_ms: 7.0578
+  type: 'test'
+  ...
+# Subtest: En escritorio planetas y estrellas avanzan sólo en X; los asteroides conservan la diagonal
+ok 53 - En escritorio planetas y estrellas avanzan sólo en X; los asteroides conservan la diagonal
+  ---
+  duration_ms: 5.1623
+  type: 'test'
+  ...
+# Subtest: Cada aparición móvil obtiene una altura aleatoria
+ok 54 - Cada aparición móvil obtiene una altura aleatoria
+  ---
+  duration_ms: 7.3734
+  type: 'test'
+  ...
+# Subtest: En Difícil los asteroides evitan la abertura segura de los pinchos
+ok 55 - En Difícil los asteroides evitan la abertura segura de los pinchos
+  ---
+  duration_ms: 7.9965
+  type: 'test'
+  ...
+# Subtest: En vertical el UFO queda más a la izquierda y el jefe más a la derecha
+ok 56 - En vertical el UFO queda más a la izquierda y el jefe más a la derecha
+  ---
+  duration_ms: 6.7782
+  type: 'test'
+  ...
+# Subtest: Acabar invencibilidad no teletransporta otra estrella activa
+ok 57 - Acabar invencibilidad no teletransporta otra estrella activa
+  ---
+  duration_ms: 4.2438
+  type: 'test'
+  ...
+# Subtest: Diagonal continua con rebote, sin teletransporte
+ok 58 - Diagonal continua con rebote, sin teletransporte
+  ---
+  duration_ms: 8.4156
+  type: 'test'
+  ...
+# Subtest: Asteroides matan, salvo durante invencibilidad
+ok 59 - Asteroides matan, salvo durante invencibilidad
+  ---
+  duration_ms: 7.1495
+  type: 'test'
+  ...
+# Subtest: Se conserva separación móvil y estado al girar la pantalla
+ok 60 - Se conserva separación móvil y estado al girar la pantalla
+  ---
+  duration_ms: 8.7697
+  type: 'test'
+  ...
+# Subtest: Los umbrales del jefe respetan cada dificultad
+ok 61 - Los umbrales del jefe respetan cada dificultad
+  ---
+  duration_ms: 16.5035
+  type: 'test'
+  ...
+# Subtest: Pausa y reanuda la partida sin aceptar impulsos
+ok 62 - Pausa y reanuda la partida sin aceptar impulsos
+  ---
+  duration_ms: 3.8411
+  type: 'test'
+  ...
+# Subtest: Los logros se guardan una sola vez y entregan su recompensa
+ok 63 - Los logros se guardan una sola vez y entregan su recompensa
+  ---
+  duration_ms: 4.4924
+  type: 'test'
+  ...
+# Subtest: El menú incluye los 22 logros y sus dos sonidos
+ok 64 - El menú incluye los 22 logros y sus dos sonidos
+  ---
+  duration_ms: 0.235
+  type: 'test'
+  ...
+# Subtest: La invencibilidad bloquea techo y suelo sin atravesarlos
+ok 65 - La invencibilidad bloquea techo y suelo sin atravesarlos
+  ---
+  duration_ms: 6.6783
+  type: 'test'
+  ...
+# Subtest: El último instante marcado de invencibilidad todavía protege al UFO
+ok 66 - El último instante marcado de invencibilidad todavía protege al UFO
+  ---
+  duration_ms: 3.2144
+  type: 'test'
+  ...
+# Subtest: El jefe dura 20, 30 y 40 segundos según la dificultad
+ok 67 - El jefe dura 20, 30 y 40 segundos según la dificultad
+  ---
+  duration_ms: 10.3642
+  type: 'test'
+  ...
+# Subtest: Cada jefe y la victoria en las tres dificultades tienen logro
+ok 68 - Cada jefe y la victoria en las tres dificultades tienen logro
+  ---
+  duration_ms: 12.2872
+  type: 'test'
+  ...
+# Subtest: Los objetos especiales mantienen el ritmo cuando aumenta la velocidad
+ok 69 - Los objetos especiales mantienen el ritmo cuando aumenta la velocidad
+  ---
+  duration_ms: 3.5288
+  type: 'test'
+  ...
+# Subtest: La pausa detiene el bucle y existe un control táctil
+ok 70 - La pausa detiene el bucle y existe un control táctil
+  ---
+  duration_ms: 0.2404
+  type: 'test'
+  ...
+# Subtest: El acceso admin móvil usa pulsación de 3 segundos en logo y puntaje
+ok 71 - El acceso admin móvil usa pulsación de 3 segundos en logo y puntaje
+  ---
+  duration_ms: 0.2596
+  type: 'test'
+  ...
+# Subtest: El HUD móvil es compacto y la explicación de monedas está bajo el récord
+ok 72 - El HUD móvil es compacto y la explicación de monedas está bajo el récord
+  ---
+  duration_ms: 0.3094
+  type: 'test'
+  ...
+# Subtest: Las tarjetas informativas del menú vertical son simétricas
+ok 73 - Las tarjetas informativas del menú vertical son simétricas
+  ---
+  duration_ms: 0.3379
+  type: 'test'
+  ...
+# Subtest: Horizontal móvil exige pantalla completa con un botón central
+ok 74 - Horizontal móvil exige pantalla completa con un botón central
+  ---
+  duration_ms: 0.216
+  type: 'test'
+  ...
+# Subtest: Las descripciones de estrella y jefe explican la jugabilidad
+ok 75 - Las descripciones de estrella y jefe explican la jugabilidad
+  ---
+  duration_ms: 0.1448
+  type: 'test'
+  ...
+# Subtest: Los puntajes desde 100.000 usan abreviaturas progresivas
+ok 76 - Los puntajes desde 100.000 usan abreviaturas progresivas
+  ---
+  duration_ms: 3.0386
+  type: 'test'
+  ...
+# Subtest: Los avisos de logro son mínimos y la barra del jefe no tapa el HUD horizontal
+ok 77 - Los avisos de logro son mínimos y la barra del jefe no tapa el HUD horizontal
+  ---
+  duration_ms: 0.7967
+  type: 'test'
+  ...
+# Subtest: El menú no usa scroll y el ranking muestra carga estable
+ok 78 - El menú no usa scroll y el ranking muestra carga estable
+  ---
+  duration_ms: 0.7585
+  type: 'test'
+  ...
+# Subtest: La API limpia nombres y valida puntuaciones antes de guardarlas
+ok 79 - La API limpia nombres y valida puntuaciones antes de guardarlas
+  ---
+  duration_ms: 8.4447
+  type: 'test'
+  ...
+# Subtest: La API reconoce las variables con prefijo personalizado creadas por Vercel
+ok 80 - La API reconoce las variables con prefijo personalizado creadas por Vercel
+  ---
+  duration_ms: 3.8997
+  type: 'test'
+  ...
+# Subtest: La API devuelve el top global desde Redis
+ok 81 - La API devuelve el top global desde Redis
+  ---
+  duration_ms: 3.9027
+  type: 'test'
+  ...
+1..81
+# tests 81
+# suites 0
+# pass 81
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1089.8895

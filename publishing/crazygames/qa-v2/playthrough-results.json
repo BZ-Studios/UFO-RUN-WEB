@@ -1,0 +1,46 @@
+{
+  "testedAt": "2026-10-27T12:15:51.076Z",
+  "root": "C:\\Users\\luisz\\OneDrive\\Desktop\\UFO RUN web\\ufo-crazygames",
+  "results": [
+    {
+      "difficulty": "easy",
+      "mobile": false,
+      "seconds": 74.7625,
+      "score": 50,
+      "bossCompleted": false,
+      "endReason": "boss",
+      "peakParticles": 29,
+      "peakSpriteCache": 16,
+      "sampleCount": 148
+    },
+    {
+      "difficulty": "normal",
+      "mobile": true,
+      "seconds": 92.0875,
+      "score": 75,
+      "bossCompleted": false,
+      "endReason": "boss",
+      "peakParticles": 32,
+      "peakSpriteCache": 16,
+      "sampleCount": 184
+    },
+    {
+      "difficulty": "hard",
+      "mobile": false,
+      "seconds": 105.1,
+      "score": 100,
+      "bossCompleted": false,
+      "endReason": "floor",
+      "peakParticles": 36,
+      "peakSpriteCache": 16,
+      "sampleCount": 158
+    },
+    {
+      "unmodifiedSmoke": true,
+      "rafFrames": 106,
+      "seconds": 1.80809999999702,
+      "p95FrameMs": 16.799999999999955,
+      "heapBytes": 2806860
+    }
+  ]
+}

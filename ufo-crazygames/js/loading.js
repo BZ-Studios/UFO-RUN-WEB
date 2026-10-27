@@ -7,6 +7,22 @@
   const message = document.getElementById("loading-message");
   let previousValue = 0;
   let failed = false;
+  const retry = document.getElementById("retry-loading-button");
+  retry.addEventListener("click", () => window.location.reload());
+
+  function fail(label) {
+    failed = true;
+    message.textContent = label;
+    retry.hidden = false;
+  }
+
+  window.addEventListener("error", (event) => {
+    const source = event.target;
+    if (source?.tagName === "SCRIPT" && source.src &&
+        new URL(source.src, window.location.href).origin === window.location.origin) {
+      fail("A game file could not load. Check your connection and try again.");
+    }
+  }, true);
 
   function update() {
     const value = tasks.size ? Math.floor(completed.size / tasks.size * 100) : 0;
@@ -29,9 +45,6 @@
       message.textContent = "Ready for liftoff";
       update();
     },
-    fail(label) {
-      failed = true;
-      message.textContent = label;
-    },
+    fail,
   });
 })();

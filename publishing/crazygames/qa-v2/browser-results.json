@@ -1,0 +1,118 @@
+{
+  "testedAt": "2026-10-27T12:10:27.588Z",
+  "browser": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+  "root": "C:\\Users\\luisz\\OneDrive\\Desktop\\UFO RUN web\\ufo-crazygames",
+  "results": [
+    {
+      "name": "One-click launch, readable layout, pause and immediate retry",
+      "width": 907,
+      "height": 510,
+      "mobile": false,
+      "menuMs": 1394
+    },
+    {
+      "name": "One-click launch, readable layout, pause and immediate retry",
+      "width": 1216,
+      "height": 684,
+      "mobile": false,
+      "menuMs": 737
+    },
+    {
+      "name": "One-click launch, readable layout, pause and immediate retry",
+      "width": 1077,
+      "height": 606,
+      "mobile": false,
+      "menuMs": 735
+    },
+    {
+      "name": "One-click launch, readable layout, pause and immediate retry",
+      "width": 821,
+      "height": 462,
+      "mobile": false,
+      "menuMs": 834
+    },
+    {
+      "name": "One-click launch, readable layout, pause and immediate retry",
+      "width": 1366,
+      "height": 768,
+      "mobile": false,
+      "menuMs": 831
+    },
+    {
+      "name": "One-click launch, readable layout, pause and immediate retry",
+      "width": 1920,
+      "height": 1080,
+      "mobile": false,
+      "menuMs": 752
+    },
+    {
+      "name": "One-click launch, readable layout, pause and immediate retry",
+      "width": 1536,
+      "height": 864,
+      "mobile": false,
+      "menuMs": 795
+    },
+    {
+      "name": "One-click launch, readable layout, pause and immediate retry",
+      "width": 1280,
+      "height": 720,
+      "mobile": false,
+      "menuMs": 749
+    },
+    {
+      "name": "One-click launch, readable layout, pause and immediate retry",
+      "width": 800,
+      "height": 450,
+      "mobile": true,
+      "menuMs": 770
+    },
+    {
+      "name": "One-click launch, readable layout, pause and immediate retry",
+      "width": 1080,
+      "height": 607,
+      "mobile": true,
+      "menuMs": 752
+    },
+    {
+      "name": "One-click launch, readable layout, pause and immediate retry",
+      "width": 568,
+      "height": 320,
+      "mobile": true,
+      "menuMs": 733
+    },
+    {
+      "name": "One-click launch, readable layout, pause and immediate retry",
+      "width": 480,
+      "height": 320,
+      "mobile": true,
+      "menuMs": 688
+    },
+    {
+      "name": "Portrait gate, state-preserving rotation, explicit resume"
+    },
+    {
+      "name": "Slow SDK does not block ready assets; loading and playable state replay once"
+    },
+    {
+      "name": "Blocked SDK fallback still playable"
+    },
+    {
+      "name": "Blocked local storage does not crash gameplay"
+    },
+    {
+      "name": "Official SDK v3 initializes on localhost (no real ads) made usable"
+    },
+    {
+      "name": "Cross-origin iframe, no fullscreen permission required"
+    },
+    {
+      "name": "Original studio presentation and credits remain available on demand"
+    },
+    {
+      "name": "Full-launch mock regression: no fake rewards, 50 coins, daily cap 10, cooldown, platform mute, no preroll"
+    },
+    {
+      "name": "Asset error: honest incomplete progress with a retry action"
+    }
+  ]
+}

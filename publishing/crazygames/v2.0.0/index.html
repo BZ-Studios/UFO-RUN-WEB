@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#071021">
+    <title>UFO RUN</title>
+    <link rel="icon" href="src/ufo_principal.png" type="image/png">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="preload" href="src/loading-cover.webp" as="image" fetchpriority="high">
+    <script src="js/loading.js" defer></script>
+    <script src="js/crazy-config.js" defer></script>
+    <script src="js/crazy-sdk.js" defer></script>
+    <script src="js/flight-rules.js" defer></script>
+    <script src="js/game.js" defer></script>
+  </head>
+  <body>
+    <main class="game-shell">
+      <section id="loading-screen" class="loading-screen" aria-label="Loading UFO RUN">
+        <img id="loading-art" class="loading-art" src="src/loading-cover.webp" alt="" fetchpriority="high">
+        <div class="loading-title"><span class="loading-eyebrow">B&amp;Z STUDIOS</span><h1>UFO <span>RUN</span></h1><p>Fly · Dodge · Explore</p></div>
+        <div class="loading-panel">
+          <div class="loading-details"><label for="loading-progress">Loading</label><output id="loading-percentage" for="loading-progress">0%</output></div>
+          <progress id="loading-progress" max="100" value="0" aria-describedby="loading-message">0%</progress>
+          <p id="loading-message" role="status" aria-live="polite">Preparing your ship...</p>
+          <button id="retry-loading-button" class="action primary" type="button" hidden>Try again</button>
+        </div>
+      </section>
+      <section id="rotate-screen" class="rotate-screen" aria-label="Landscape orientation required" hidden>
+        <svg viewBox="0 0 96 96" aria-hidden="true"><rect x="31" y="17" width="34" height="62" rx="5"/><path d="M12 46a36 36 0 0 1 57-28M69 7v11H58M84 50a36 36 0 0 1-57 28M27 89V78h11"/></svg>
+        <h2>Rotate your device</h2><p>UFO RUN is played in landscape.<br>Turn your screen sideways to take off.</p>
+      </section>
+      <section id="ad-request-overlay" class="ad-request-overlay" role="status" aria-live="polite" hidden><span class="ad-spinner" aria-hidden="true"></span><p>Preparing your ad...</p></section>
+      <section id="intro-screen" class="intro-screen" aria-label="Studio introduction and credits" hidden>
+        <div class="intro-panel intro-studio">
+          <img src="src/Logo_bz.png" alt="B&amp;Z Studios" class="intro-brand-logo">
+          <p class="intro-heading">Presents</p>
+        </div>
+        <div class="intro-panel intro-credits">
+          <img src="src/Logo_bz.png" alt="B&amp;Z Studios" class="intro-brand-logo">
+          <h2>UFO RUN</h2>
+          <p class="intro-heading">Credits</p>
+          <div class="credit-entry"><strong>Luis Zabala</strong><span>Creator · Developer · Tester</span></div>
+          <div class="credit-entry"><strong>Agustín Bustamante</strong><span>Creator · Developer · Tester</span></div>
+        </div>
+        <button id="skip-intro-button" class="skip-intro" type="button">Skip intro</button>
+      </section>
+      <canvas
+        id="game"
+        width="800"
+        height="600"
+        tabindex="0"
+        role="application"
+        aria-label="UFO RUN. Arcade space flight with unlockable ships. Press Space, click or tap to fly. Collect planets, avoid spikes and dodge asteroids on Hard difficulty."
+      >
+        Your browser does not support Canvas 2D.
+      </canvas>
+      <p id="game-hud" class="game-hud" hidden>Score: 0</p>
+      <p id="invincible-label" class="game-status" hidden>INVINCIBLE</p>
+      <p id="flight-start-prompt" class="flight-start-prompt" hidden>Tap, click or press Space to boost</p>
+      <section id="flight-tutorial" class="flight-tutorial" aria-label="Flight controls" hidden>
+        <span class="tutorial-gesture" aria-hidden="true">↑</span><p><strong>Tap to rise</strong><span class="instructions-mobile">Coast to fall · fly through the openings</span><span class="instructions-desktop">Space / click · coast to fall</span></p>
+        <button id="skip-tutorial-button" type="button" aria-label="Dismiss flight tips">Got it</button>
+      </section>
+      <div id="flight-progress" class="flight-progress" hidden><p id="flight-target">Next: 5 points</p><div class="flight-progress-track"><span id="flight-progress-fill"></span></div></div>
+      <section id="boss-hud" class="boss-hud" aria-label="Boss battle" hidden>
+        <div class="boss-hud-heading"><span>Cosmic Devourer</span><strong id="boss-timer">30s</strong></div>
+        <div class="boss-time-track" aria-hidden="true"><span id="boss-time-fill"></span></div>
+      </section>
+      <aside id="achievement-toast" class="achievement-toast" role="status" aria-live="polite" hidden>
+        <span class="achievement-toast-icon" aria-hidden="true">🏆</span>
+        <div><strong>Achievement</strong><b id="achievement-toast-title"></b><span id="achievement-toast-description"></span><em id="achievement-toast-reward"></em></div>
+      </aside>
+      <header id="toolbar" class="toolbar" hidden>
+        <button id="back-button" class="control back-button" type="button" hidden>Back</button>
+        <div class="toolbar-actions">
+          <span class="wallet" aria-label="Available coins"><span aria-hidden="true">✦</span> <span data-credits>0</span></span>
+          <button id="pause-button" class="control icon-control" type="button" aria-label="Pause game" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h4v16H7zM13 4h4v16h-4z"/></svg></button>
+          <button id="sound-button" class="control icon-control" type="button" aria-label="Mute sound" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h4l5-4v14l-5-4H3z"/><path class="sound-waves" d="M16 8q5 4 0 8M19 5q8 7 0 14"/></svg></button>
+        </div>
+      </header>
+      <section id="interface" class="interface" aria-label="UFO RUN interface" hidden>
+        <div id="menu-screen" class="screen menu-screen" hidden>
+          <img id="menu-brand-logo" class="menu-brand-logo" src="src/Logo_bz.png" alt="B&amp;Z Studios" draggable="false">
+          <div class="menu-heading"><p class="menu-eyebrow">ONE UFO. ONE MORE TRY.</p><h1>UFO <span>RUN</span></h1><p class="tagline">Find your rhythm. Outrun the cosmos.</p></div>
+          <figure class="ship-preview"><img id="equipped-preview" src="src/ufo_principal.png" alt="Equipped ship"><figcaption id="equipped-name">Classic</figcaption></figure>
+          <div class="difficulty-selector" aria-label="Select difficulty">
+            <p>Difficulty</p>
+            <div class="difficulty-options" role="radiogroup" aria-label="Game difficulty">
+              <button type="button" data-difficulty="easy" role="radio" aria-checked="false">Easy</button>
+              <button type="button" data-difficulty="normal" role="radio" aria-checked="true">Normal</button>
+              <button type="button" data-difficulty="hard" role="radio" aria-checked="false">Hard</button>
+            </div>
+            <span id="difficulty-description">The original UFO RUN experience</span>
+          </div>
+          <div class="menu-actions"><button id="play-button" class="action primary" type="button"><span aria-hidden="true">▶</span> Play</button><button id="shop-button" class="action secondary" type="button">Hangar · 6 ships</button><nav class="menu-links" aria-label="Flight extras"><button id="achievements-button" type="button">Achievements</button><button id="help-button" type="button">How to play</button><button id="ranking-button" type="button">Records</button></nav></div>
+          <div class="menu-info"><p class="instructions"><strong class="instructions-mobile">Tap to rise</strong><span class="instructions-mobile">Coast to fall</span><strong class="instructions-desktop">Space / click to rise</strong><span class="instructions-desktop">Coast to fall</span></p><div class="record-column"><p class="record">Personal best<strong data-best-score>0</strong></p><p id="menu-goal" class="menu-footnote">Next target: 5 points</p></div></div>
+        </div>
+        <div id="shop-screen" class="screen shop-screen" hidden>
+          <div class="section-heading"><h2>Hangar</h2><p>Choose your ship</p></div>
+          <div id="shop-grid" class="shop-grid">
+            <article id="coin-ad-offer" class="skin-card reward-card" hidden>
+              <h3>50 coins</h3><span class="reward-video-icon" aria-hidden="true">▶</span>
+              <p id="coin-ad-remaining">10 ads available today</p>
+              <button id="coin-ad-button" type="button">Watch ad +50</button>
+            </article>
+          </div><p id="shop-status" class="shop-status" role="status">Earn coins by flying past obstacles</p>
+        </div>
+        <div id="help-screen" class="screen help-screen" hidden>
+          <div class="section-heading"><h2>Flight guide</h2><p>One tap to rise. A little rhythm goes a long way.</p><button id="credits-button" type="button">Studio &amp; credits</button></div>
+          <div class="help-grid">
+            <article class="help-card"><img src="src/ufo_principal.png" alt="UFO"><div><h3>Your UFO</h3><p>Tap the screen, click or press Space to boost your ship.</p></div></article>
+            <article class="help-card"><div class="help-spikes" aria-hidden="true"><img src="src/Pincho_alto.png" alt=""><img src="src/Pincho_bajo.png" alt=""></div><div><h3>Spikes</h3><p>Fly through the gap without touching the spikes. Each pair you pass earns 1 point.</p></div></article>
+            <article class="help-card"><div class="help-boundaries" aria-hidden="true"><span></span><b>UFO</b><span></span></div><div><h3>Ceiling and floor</h3><p>Stay on screen. Hitting the ceiling or the floor ends your mission.</p></div></article>
+            <article class="help-card"><img src="src/planetas/Tierra.png" alt="Planet Earth"><div><h3>Planets</h3><p>Collect any planet to earn 1 extra point.</p></div></article>
+            <article class="help-card"><img src="src/powerup_star.png" alt="Invincibility star"><div><h3>Star</h3><p>Grants temporary invincibility. While your shield glows, obstacles cannot destroy your ship.</p></div></article>
+            <article class="help-card"><div class="help-asteroids"><img src="src/Obstaculos/Asteroide.png" alt="Asteroid"><img src="src/Obstaculos/asteroide_2.png" alt="Second asteroid"></div><div><h3>Asteroids</h3><p>Only appear on Hard. They travel fast and destroy your ship unless your shield is active.</p></div></article>
+            <article class="help-card"><img src="src/boss_cosmico.png" alt="Cosmic Devourer"><div><h3>Cosmic boss</h3><p>Appears at 50 / 75 / 100 points on Easy / Normal / Hard. Survive the timed battle, then keep flying for a new best.</p></div></article>
+          </div>
+        </div>
+        <div id="achievements-screen" class="screen achievements-screen" hidden>
+          <div class="section-heading"><h2>🏆 Achievements</h2><p><span id="achievement-count">0 / 22</span> unlocked</p></div>
+          <div id="achievements-grid" class="achievements-grid"></div>
+        </div>
+        <div id="ranking-screen" class="screen ranking-screen" hidden>
+          <div class="ranking-panel">
+            <div class="section-heading"><h2>🏆 Leaderboard</h2><p id="ranking-subtitle">Best flights on this device</p></div>
+            <div class="ranking-tabs" role="tablist" aria-label="Leaderboard by difficulty">
+              <button type="button" data-ranking-difficulty="easy" role="tab">Easy</button>
+              <button type="button" data-ranking-difficulty="normal" role="tab" aria-selected="true">Normal</button>
+              <button type="button" data-ranking-difficulty="hard" role="tab">Hard</button>
+            </div>
+            <div class="ranking-table-wrap"><table><thead><tr><th>#</th><th>Pilot</th><th>Score</th></tr></thead><tbody id="ranking-body"></tbody></table></div>
+          </div>
+        </div>
+        <div id="gameover-screen" class="screen gameover-screen" hidden>
+          <p id="run-outcome" class="run-outcome">Mission over</p><h2 id="result-title">One more flight?</h2><p class="final-score">Score <strong id="final-score">0</strong></p><p id="run-reward" class="run-reward">+0 coins saved</p>
+          <p id="death-hint" class="death-hint">Aim for the middle of each opening.</p>
+          <p id="run-stats" class="run-stats">0 gates · 0 planets · 0s</p>
+          <div id="continue-ad-offer" class="continue-offer" hidden>
+            <button id="continue-ad-button" class="action rewarded-action" type="button"><span aria-hidden="true">▶</span> Watch ad to continue</button>
+            <button id="continue-coins-button" class="action" type="button">Continue: 100 coins</button>
+            <p id="continue-ad-status" role="status">Optional second chance · or restart for free</p>
+          </div>
+          <div class="gameover-actions"><button id="restart-button" class="action primary" type="button">Fly again</button><button id="menu-button" class="action secondary" type="button">Main menu</button></div>
+          <p class="final-record">Best score <strong data-best-score>0</strong></p>
+        </div>
+        <footer id="authors-footer" class="authors interface-footer" hidden>Credits<span>Luis Zabala</span><small>Creator · Developer · Tester</small><span>Agustín Bustamante</span><small>Creator · Developer · Tester</small></footer>
+      </section>
+      <dialog id="pause-dialog" class="pixel-dialog pause-dialog">
+        <section class="dialog-card">
+          <p class="dialog-kicker">Flight on hold</p>
+          <h2>Game paused</h2>
+          <p>Press P or use Resume when you are ready.</p>
+          <div class="pause-actions"><button id="resume-button" class="confirm" type="button">Resume</button><button id="pause-restart-button" type="button">Restart</button><button id="pause-menu-button" type="button">Main menu</button></div>
+        </section>
+      </dialog>
+    </main>
+    <noscript>UFO RUN requires JavaScript to run.</noscript>
+  </body>
+</html>

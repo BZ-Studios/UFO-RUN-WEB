@@ -1,0 +1,44 @@
+[
+  {
+    "width": 907,
+    "height": 510,
+    "mobile": false,
+    "menuMs": 8521,
+    "state": {
+      "state": "playing",
+      "flightStarted": false,
+      "score": 0,
+      "spikes": 0
+    },
+    "fullscreenButton": true,
+    "smallText": [
+      "10px",
+      "11px",
+      "11px",
+      "10px",
+      "9px"
+    ],
+    "errors": []
+  },
+  {
+    "width": 800,
+    "height": 450,
+    "mobile": true,
+    "menuMs": 7556,
+    "state": {
+      "state": "playing",
+      "flightStarted": false,
+      "score": 0,
+      "spikes": 0
+    },
+    "fullscreenButton": true,
+    "smallText": [
+      "10px",
+      "11px",
+      "11px",
+      "10px",
+      "9px"
+    ],
+    "errors": []
+  }
+]

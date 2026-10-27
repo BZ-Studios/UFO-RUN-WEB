@@ -63,7 +63,11 @@
           initialized = true;
           applySettings(sdk.game.settings);
           sdk.game.addSettingsChangeListener?.(applySettings);
-          if (loading) safely(() => sdk.game.loadingStart());
+          safely(() => sdk.game.loadingStart());
+          if (!loading) safely(() => sdk.game.loadingStop());
+          // Assets may be ready and the player may already be flying while a
+          // slow portal handshake finishes. Replay that state exactly once.
+          if (!loading && playing) safely(() => sdk.game.gameplayStart());
           finish(true);
         } catch (_error) { finish(false); }
       }, { once: true });
@@ -122,6 +126,7 @@
     isMuted: () => platformMuted,
     gameplay: notifyGameplay,
     loadingFinished: () => {
+      if (!loading) return;
       loading = false;
       if (supported()) safely(() => sdk.game.loadingStop());
     },

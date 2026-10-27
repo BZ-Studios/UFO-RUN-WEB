@@ -19,7 +19,9 @@ Desde la raíz del repositorio inicia un servidor HTTP, por ejemplo `python -m h
 4. Completa la ficha, imágenes y datos solicitados en el portal y revisa la versión en su entorno de pruebas antes de enviarla a evaluación.
 5. Comprueba carga, sonido, pausa, controles, móvil horizontal y avisos de orientación. La revisión y la monetización dependen de CrazyGames; preparar el código no garantiza aceptación.
 
-La copia pesa aproximadamente 16,5 MB sin comprimir. Las rutas de recursos son relativas. No necesita un Game ID de GameDistribution.
+La revisión v2.0.0 pesa aproximadamente 6,92 MB sin comprimir. Las rutas de recursos son relativas. No necesita un Game ID de GameDistribution. La compilación verificada y el ZIP listo están en `publishing/crazygames/v2.0.0/` y `publishing/crazygames/ufo-run-crazygames-v2.0.0.zip`.
+
+El [informe de revisión v2](crazygames-v2-review.md) detalla los cambios de jugabilidad, resultados, recuperación y pruebas pendientes. Play ahora inicia el vuelo en una acción; las instrucciones son descartables dentro de la partida y la introducción se conserva en Flight guide → Studio & credits. Para regenerar el paquete y repetir las pruebas, consultar [tools/crazygames/README.md](../tools/crazygames/README.md).
 
 ## SDK y anuncios
 

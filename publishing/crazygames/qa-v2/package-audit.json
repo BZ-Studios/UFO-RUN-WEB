@@ -1,0 +1,19 @@
+{
+  "base": "d0ecd74d3a385bbf61d558d7d96ef823120770a6",
+  "baselineFiles": 45,
+  "baselineBytes": 16425117,
+  "releaseFiles": 46,
+  "releaseBytes": 6915506,
+  "zipBytes": 6766712,
+  "zipSha256": "226200e97a54b8f23bc180326d08afff5ed06cf80e541856e92fdab5e68eeb17",
+  "reductionPercent": 57.9,
+  "protectedFilesChecked": 158,
+  "apkSnapshotDifferences": [
+    "apk/version 1/app/build.gradle",
+    "apk/version 1/app/src/main/AndroidManifest.xml",
+    "apk/version 1/app/src/main/res/mipmap-nodpi/ufo_launcher_sprite.png",
+    "apk/version 1/README.md",
+    "apk/version 1/tests/verify_icon.py"
+  ],
+  "protectedFilesChanged": []
+}

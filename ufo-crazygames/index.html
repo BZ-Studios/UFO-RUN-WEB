@@ -8,9 +8,10 @@
     <link rel="icon" href="src/ufo_principal.png" type="image/png">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="preload" href="src/loading-cover.webp" as="image" fetchpriority="high">
-    <script src="js/crazy-config.js" defer></script>
     <script src="js/loading.js" defer></script>
+    <script src="js/crazy-config.js" defer></script>
     <script src="js/crazy-sdk.js" defer></script>
+    <script src="js/flight-rules.js" defer></script>
     <script src="js/game.js" defer></script>
   </head>
   <body>
@@ -56,7 +57,12 @@
       </canvas>
       <p id="game-hud" class="game-hud" hidden>Score: 0</p>
       <p id="invincible-label" class="game-status" hidden>INVINCIBLE</p>
-      <p id="flight-start-prompt" class="flight-start-prompt" hidden>Tap, click or press Space to launch</p>
+      <p id="flight-start-prompt" class="flight-start-prompt" hidden>Tap, click or press Space to boost</p>
+      <section id="flight-tutorial" class="flight-tutorial" aria-label="Flight controls" hidden>
+        <span class="tutorial-gesture" aria-hidden="true">↑</span><p><strong>Tap to rise</strong><span class="instructions-mobile">Coast to fall · fly through the openings</span><span class="instructions-desktop">Space / click · coast to fall</span></p>
+        <button id="skip-tutorial-button" type="button" aria-label="Dismiss flight tips">Got it</button>
+      </section>
+      <div id="flight-progress" class="flight-progress" hidden><p id="flight-target">Next: 5 points</p><div class="flight-progress-track"><span id="flight-progress-fill"></span></div></div>
       <section id="boss-hud" class="boss-hud" aria-label="Boss battle" hidden>
         <div class="boss-hud-heading"><span>Cosmic Devourer</span><strong id="boss-timer">30s</strong></div>
         <div class="boss-time-track" aria-hidden="true"><span id="boss-time-fill"></span></div>
@@ -71,13 +77,12 @@
           <span class="wallet" aria-label="Available coins"><span aria-hidden="true">✦</span> <span data-credits>0</span></span>
           <button id="pause-button" class="control icon-control" type="button" aria-label="Pause game" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h4v16H7zM13 4h4v16h-4z"/></svg></button>
           <button id="sound-button" class="control icon-control" type="button" aria-label="Mute sound" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h4l5-4v14l-5-4H3z"/><path class="sound-waves" d="M16 8q5 4 0 8M19 5q8 7 0 14"/></svg></button>
-          <button id="fullscreen-button" class="control icon-control" type="button" aria-label="Fullscreen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M3 15v6h6M21 15v6h-6"/></svg></button>
         </div>
       </header>
       <section id="interface" class="interface" aria-label="UFO RUN interface" hidden>
         <div id="menu-screen" class="screen menu-screen" hidden>
           <img id="menu-brand-logo" class="menu-brand-logo" src="src/Logo_bz.png" alt="B&amp;Z Studios" draggable="false">
-          <div class="menu-heading"><h1>UFO <span>RUN</span></h1><p class="tagline">Fly · Dodge · Explore</p></div>
+          <div class="menu-heading"><p class="menu-eyebrow">ONE UFO. ONE MORE TRY.</p><h1>UFO <span>RUN</span></h1><p class="tagline">Find your rhythm. Outrun the cosmos.</p></div>
           <figure class="ship-preview"><img id="equipped-preview" src="src/ufo_principal.png" alt="Equipped ship"><figcaption id="equipped-name">Classic</figcaption></figure>
           <div class="difficulty-selector" aria-label="Select difficulty">
             <p>Difficulty</p>
@@ -88,8 +93,8 @@
             </div>
             <span id="difficulty-description">The original UFO RUN experience</span>
           </div>
-          <div class="menu-actions"><button id="play-button" class="action primary" type="button"><span aria-hidden="true">▶</span> Play</button><button id="shop-button" class="action secondary" type="button">Hangar</button><button id="achievements-button" class="action secondary" type="button">🏆 Achievements</button><button id="help-button" class="action secondary" type="button">Help</button><button id="ranking-button" class="action secondary" type="button">Leaderboard</button></div>
-          <div class="menu-info"><p class="instructions"><strong class="instructions-mobile">Tap to fly</strong><span class="instructions-mobile">Tap the screen to boost</span><strong class="instructions-desktop">Space or click</strong><span class="instructions-desktop">Boost your ship</span></p><div class="record-column"><p class="record">Best score<strong data-best-score>0</strong></p><p class="menu-footnote">Every point you earn becomes a coin</p></div></div>
+          <div class="menu-actions"><button id="play-button" class="action primary" type="button"><span aria-hidden="true">▶</span> Play</button><button id="shop-button" class="action secondary" type="button">Hangar · 6 ships</button><nav class="menu-links" aria-label="Flight extras"><button id="achievements-button" type="button">Achievements</button><button id="help-button" type="button">How to play</button><button id="ranking-button" type="button">Records</button></nav></div>
+          <div class="menu-info"><p class="instructions"><strong class="instructions-mobile">Tap to rise</strong><span class="instructions-mobile">Coast to fall</span><strong class="instructions-desktop">Space / click to rise</strong><span class="instructions-desktop">Coast to fall</span></p><div class="record-column"><p class="record">Personal best<strong data-best-score>0</strong></p><p id="menu-goal" class="menu-footnote">Next target: 5 points</p></div></div>
         </div>
         <div id="shop-screen" class="screen shop-screen" hidden>
           <div class="section-heading"><h2>Hangar</h2><p>Choose your ship</p></div>
@@ -102,7 +107,7 @@
           </div><p id="shop-status" class="shop-status" role="status">Earn coins by flying past obstacles</p>
         </div>
         <div id="help-screen" class="screen help-screen" hidden>
-          <div class="section-heading"><h2>Help</h2><p>Flight guide</p></div>
+          <div class="section-heading"><h2>Flight guide</h2><p>One tap to rise. A little rhythm goes a long way.</p><button id="credits-button" type="button">Studio &amp; credits</button></div>
           <div class="help-grid">
             <article class="help-card"><img src="src/ufo_principal.png" alt="UFO"><div><h3>Your UFO</h3><p>Tap the screen, click or press Space to boost your ship.</p></div></article>
             <article class="help-card"><div class="help-spikes" aria-hidden="true"><img src="src/Pincho_alto.png" alt=""><img src="src/Pincho_bajo.png" alt=""></div><div><h3>Spikes</h3><p>Fly through the gap without touching the spikes. Each pair you pass earns 1 point.</p></div></article>
@@ -110,7 +115,7 @@
             <article class="help-card"><img src="src/planetas/Tierra.png" alt="Planet Earth"><div><h3>Planets</h3><p>Collect any planet to earn 1 extra point.</p></div></article>
             <article class="help-card"><img src="src/powerup_star.png" alt="Invincibility star"><div><h3>Star</h3><p>Grants temporary invincibility. While your shield glows, obstacles cannot destroy your ship.</p></div></article>
             <article class="help-card"><div class="help-asteroids"><img src="src/Obstaculos/Asteroide.png" alt="Asteroid"><img src="src/Obstaculos/asteroide_2.png" alt="Second asteroid"></div><div><h3>Asteroids</h3><p>Only appear on Hard. They travel fast and destroy your ship unless your shield is active.</p></div></article>
-            <article class="help-card"><img src="src/boss_cosmico.png" alt="Cosmic Devourer"><div><h3>Cosmic boss</h3><p>The Cosmic Devourer awakens for the final battle. Dodge its volleys until its energy runs out to claim victory.</p></div></article>
+            <article class="help-card"><img src="src/boss_cosmico.png" alt="Cosmic Devourer"><div><h3>Cosmic boss</h3><p>Appears at 50 / 75 / 100 points on Easy / Normal / Hard. Survive the timed battle, then keep flying for a new best.</p></div></article>
           </div>
         </div>
         <div id="achievements-screen" class="screen achievements-screen" hidden>
@@ -129,13 +134,15 @@
           </div>
         </div>
         <div id="gameover-screen" class="screen gameover-screen" hidden>
-          <h2>Mission over</h2><p class="final-score">Score <strong id="final-score">0</strong></p><p id="run-reward" class="run-reward">+0 coins saved</p>
+          <p id="run-outcome" class="run-outcome">Mission over</p><h2 id="result-title">One more flight?</h2><p class="final-score">Score <strong id="final-score">0</strong></p><p id="run-reward" class="run-reward">+0 coins saved</p>
+          <p id="death-hint" class="death-hint">Aim for the middle of each opening.</p>
+          <p id="run-stats" class="run-stats">0 gates · 0 planets · 0s</p>
           <div id="continue-ad-offer" class="continue-offer" hidden>
             <button id="continue-ad-button" class="action rewarded-action" type="button"><span aria-hidden="true">▶</span> Watch ad to continue</button>
             <button id="continue-coins-button" class="action" type="button">Continue: 100 coins</button>
             <p id="continue-ad-status" role="status">Optional second chance · or restart for free</p>
           </div>
-          <div class="gameover-actions"><button id="restart-button" class="action primary" type="button">Restart</button><button id="menu-button" class="action secondary" type="button">Main menu</button></div>
+          <div class="gameover-actions"><button id="restart-button" class="action primary" type="button">Fly again</button><button id="menu-button" class="action secondary" type="button">Main menu</button></div>
           <p class="final-record">Best score <strong data-best-score>0</strong></p>
         </div>
         <footer id="authors-footer" class="authors interface-footer" hidden>Credits<span>Luis Zabala</span><small>Creator · Developer · Tester</small><span>Agustín Bustamante</span><small>Creator · Developer · Tester</small></footer>
@@ -144,7 +151,7 @@
         <section class="dialog-card">
           <p class="dialog-kicker">Flight on hold</p>
           <h2>Game paused</h2>
-          <p>Press P or Esc to resume.</p>
+          <p>Press P or use Resume when you are ready.</p>
           <div class="pause-actions"><button id="resume-button" class="confirm" type="button">Resume</button><button id="pause-restart-button" type="button">Restart</button><button id="pause-menu-button" type="button">Main menu</button></div>
         </section>
       </dialog>
